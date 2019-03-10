@@ -1,20 +1,17 @@
-
 import blockchain
 
 
-
-
 class Block:
-	def __init__(self):
+	def __init__(self, previousHash, timestamp, nonce, listOfTransactions):
 		##set
 
-		#self.previousHash
-		#self.timestamp
-		#self.hash
-		#self.nonce
-		#self.listOfTransactions
+		self.previousHash = previousHash
+		self.timestamp = timestamp
+		self.hash = self.myHash()
+		self.nonce = nonce
+		self.listOfTransactions = listOfTransactions
 	
-	def myHash:
+	def myHash():
 		#calculate self.hash
 
 

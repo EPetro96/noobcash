@@ -1,27 +1,39 @@
 import block
 import wallet
+import blockchain
 
 class node:
-	def __init__():
-		self.NBC=100;
+	def __init__(self, identifier, chain, current_id_count, NBCs):
+		self.id = identifier
+		# self.NBC=100;
 		##set
 
-		#self.chain
-		#self.current_id_count
-		#self.NBCs
-		#self.wallet
+		self.chain = chain
+		self.current_id_count = current_id_count
+		self.NBCs = NBCs
+		self.wallet = self.create_wallet()
 
-		#slef.ring[]   #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
-
-
+		self.ring[] #???  #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
 
 
-	def.create_new_block():
 
-	def create_wallet():
+
+	def create_new_block(previousHash, timestamp, nonce, listOfTransactions):
+		b = block(previousHash, timestamp, nonce, listOfTransactions)
+		return b
+
+	def create_wallet(self):
 		#create a wallet for this node, with a public key and a private key
 
-	def register_node_to_ring():
+	def register_node_to_ring(self, public_key, ip, port):
+		if (self.id == 0):		#if i'm the bootstrap node
+			identifier = self.current_id_count
+			ring.append((identifier,ip_port,public_key,balance))
+			self.current_id_count++
+			if(self.current_id_count == 5):
+				#broadcast the ring
+
+
 		#add this node to the ring, only the bootstrap node can add a node to the ring after checking his wallet and ip:port address
 		#bottstrap node informs all other nodes and gives the request node an id and 100 NBCs
 

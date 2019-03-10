@@ -19,6 +19,9 @@ class Transaction:
 
         ##set
 
+        self.sender_address = sender_address
+        self.receiver_address = recipient_address
+        self.amount = value
 
 
         #self.sender_address: To public key του wallet από το οποίο προέρχονται τα χρήματα
@@ -36,8 +39,10 @@ class Transaction:
     def to_dict(self):
         
 
-    def sign_transaction(self):
-        """
-        Sign transaction with private key
-        """
-       
+    def sign_transaction(self, sender_private_key):
+        #Sign transaction with private key
+        message = str(self.sender_address) + str(self.receiver_address) + str(self.amount)
+        key = sender_private_key	#key = RSA.import_key(open('private_key.der').read())	https://pycryptodome.readthedocs.io/en/latest/src/signature/pkcs1_v1_5.html
+        h = SHA256.new(message)
+        signature = PKCS1_v1_5.new(key).sign(h)
+        return signature       
