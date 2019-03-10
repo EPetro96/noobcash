@@ -7,11 +7,11 @@ class Block:
 
 		self.previousHash = previousHash
 		self.timestamp = timestamp
-		self.hash = self.myHash()
+		self.hash = self.myHash
 		self.nonce = nonce
 		self.listOfTransactions = listOfTransactions
 	
-	def myHash():
+	def myHash:
 		#calculate self.hash
 
 

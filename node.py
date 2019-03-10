@@ -14,6 +14,7 @@ class node:
 		self.wallet = self.create_wallet()
 
 		self.ring[] #???  #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
+		#maybe dictionary with public_key as key values?
 
 
 
@@ -38,8 +39,10 @@ class node:
 		#bottstrap node informs all other nodes and gives the request node an id and 100 NBCs
 
 
-	def create_transaction(sender, receiver, signature):
-		#remember to broadcast it
+	def create_transaction(sender, receiver, signature, transaction):
+		tuple_sender = ring{str(sender)}	#tbd
+		tuple_recv = ring{str(receiver)}	#tbd
+		
 
 
 	def broadcast_transaction():

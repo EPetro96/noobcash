@@ -47,7 +47,7 @@ def register_node():
 	n.register_node_to_ring(public_key, ip, port)
 	t = transaction(n.wallet.public_key(),n.wallet.private_key() ,public_key, 100)
 	signature = t.sign_transaction(n.wallet.private_key())
-	n.create_transaction(n.wallet.public_key(), public_key, signature)
+	n.create_transaction(n.wallet.public_key(), public_key, signature, t)
 
 # get all transactions in the blockchain
 
