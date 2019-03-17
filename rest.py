@@ -45,7 +45,7 @@ def register_node():
 	ip = request.remote_addr
 	public_key = request.args.get('public_key')
 	n.register_node_to_ring(public_key, ip, port)
-	t = transaction(n.wallet.public_key(),n.wallet.private_key() ,public_key, 100)
+	#t = transaction(n.wallet.public_key(),n.wallet.private_key() ,public_key, 100)
 	signature = t.sign_transaction(n.wallet.private_key())
 	n.create_transaction(n.wallet.public_key(), public_key, signature, t)
 

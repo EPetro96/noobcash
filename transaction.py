@@ -14,29 +14,23 @@ from flask import Flask, jsonify, request, render_template
 
 class Transaction:
 
-    def __init__(self, sender_address, sender_private_key, recipient_address, value):
-
-
+    def __init__(self, sender_address, sender_private_key, recipient_address, value, identity, transaction_in, transaction_out):
         ##set
 
         self.sender_address = sender_address
         self.receiver_address = recipient_address
         self.amount = value
-
-
-        #self.sender_address: To public key του wallet από το οποίο προέρχονται τα χρήματα
-        #self.receiver_address: To public key του wallet στο οποίο θα καταλήξουν τα χρήματα
-        #self.amount: το ποσό που θα μεταφερθεί
-        #self.transaction_id: το hash του transaction
-        #self.transaction_inputs: λίστα από Transaction Input 
-        #self.transaction_outputs: λίστα από Transaction Output 
-        #selfSignature
-
-
-    
+		self.transaction_id = identity
+        self.transaction_inputs = transaction_in
+        self.transaction_outputs = transaction_out
+        self.Signature = self.sign_transaction()
 
 
     def to_dict(self):
+    	return OrderedDict({'transaction_id': self.transaction_id,
+    						'sender_address': self.sender_address,
+                            'recipient_address': self.receiver_address,
+							'ammount': self.ammount})
         
 
     def sign_transaction(self, sender_private_key):
@@ -46,3 +40,10 @@ class Transaction:
         h = SHA256.new(message)
         signature = PKCS1_v1_5.new(key).sign(h)
         return signature       
+
+    #DIKIA MOU
+	def verify_signature(sender_public_key):
+		#verify that the signature corresponds to senders public key
+		verifier = PKCS1_v1_5.new(sender_public_key)
+        h = SHA.new(str(transaction).encode('utf8'))
+		return verifier.verify(h, binascii.unhexlify(signature))
