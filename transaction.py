@@ -41,7 +41,6 @@ class Transaction:
         signature = PKCS1_v1_5.new(key).sign(h)
         return signature       
 
-    #DIKIA MOU
 	def verify_signature(sender_public_key):
 		#verify that the signature corresponds to sender's public key
 		verifier = PKCS1_v1_5.new(sender_public_key)

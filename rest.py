@@ -58,6 +58,13 @@ def get_transactions():
     response = {'transactions': transactions}
     return jsonify(response), 200
 
+#just a dummy implementation
+@app.route('transactions/create', methods=['POST'])
+def create_trans():
+	trans = create_transaction(sender, receiver, signature, ammount)
+	list_of_ips_ports = broadcast_transaction()
+	#broadcast(trans, list_of_ips_ports)
+
 
 
 # run it once for every node
