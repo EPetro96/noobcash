@@ -113,7 +113,7 @@ class node:
 		transaction_pool.append(transaction)
 		utxo_for_receiver = transaction.transaction_outputs[1]
 		# if (utxo_for_receiver['recipient'] == self.wallet.public_key):	#if trans_out is about me, append it to my utxos
-		self.UTXOs.append(utxo_for_receiver)
+		self.UTXOs.append(utxo_for_receiver) #<-- is this necessary ?
 		if (len(transaction_pool) == capacity):
 			block = create_new_block(self.transaction_pool)
 			mined_block = mine_block(block)
@@ -160,4 +160,21 @@ class node:
 		#resolve correct chain
 
 
+	def validate_block(self, block):	#except for genesis block
+		lastblock = self.chain[-1]
+		last_hash = lastblock.hash
+		prev_hash = block.previousHash
+		if (prev_hash != last_hash):
+			resolve_conflicts() #args(?)
+		else
+			#transactions = block.listOfTransactions
+			#timestamp = block.timestamp
+			myHash = block.myHash()
+			#guess = (str(transactions)+str(prev_hash)+str(nonce)+str(timestamp)).encode()
+   			#guess_hash = hashlib.sha256(guess).hexdigest()
+        	if (myHash == block.hash):
+				self.chain.append(block)
+			else:
+				#POULO	
+		return block
 

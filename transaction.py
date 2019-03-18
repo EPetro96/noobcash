@@ -35,7 +35,7 @@ class Transaction:
 
     def sign_transaction(self, sender_private_key):
         #Sign transaction with private key
-        message = str(self.sender_address) + str(self.receiver_address) + str(self.amount)
+        message = (str(self.sender_address) + str(self.receiver_address) + str(self.amount)).encode()
         key = sender_private_key	#key = RSA.import_key(open('private_key.der').read())	https://pycryptodome.readthedocs.io/en/latest/src/signature/pkcs1_v1_5.html
         h = SHA256.new(message)
         signature = PKCS1_v1_5.new(key).sign(h)
