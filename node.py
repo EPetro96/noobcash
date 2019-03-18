@@ -75,7 +75,9 @@ class node:
 		#a)verify signature
 		sender_public_key = transaction.sender_address
 		if (transaction.verify_signature(sender_public_key)):
-			#check MY utxos for transaction.inputs. If valid, take trans_inputs out of my UTXOS. Create two new utxos for THIS transaction and add them to my utxos
+			#check MY utxos for transaction.inputs. 
+			#If valid, take trans_inputs out of my UTXOS. 
+			#Create two new utxos for THIS transaction and add them to my utxos
 
 
 	def add_transaction_to_block():

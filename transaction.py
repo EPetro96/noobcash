@@ -43,7 +43,7 @@ class Transaction:
 
     #DIKIA MOU
 	def verify_signature(sender_public_key):
-		#verify that the signature corresponds to senders public key
+		#verify that the signature corresponds to sender's public key
 		verifier = PKCS1_v1_5.new(sender_public_key)
         h = SHA.new(str(transaction).encode('utf8'))
 		return verifier.verify(h, binascii.unhexlify(signature))
