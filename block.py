@@ -1,4 +1,4 @@
-import blockchain
+#import blockchain
 import json
 
 
@@ -8,7 +8,7 @@ class Block:
 		self.index = index
 		self.previousHash = previousHash
 		self.timestamp = timestamp
-		self.hash = 42
+		self.hash = 42 					#dummy initializer
 		self.nonce = nonce
 		self.listOfTransactions = listOfTransactions
 	
