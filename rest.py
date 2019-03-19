@@ -58,6 +58,20 @@ def get_transactions():
     response = {'transactions': transactions}
     return jsonify(response), 200
 
+#dikia mas
+@app.route('/blockchain/getLength', methods=['GET'])
+def get_chain_length():
+	response = {'length': len(node.chain)}
+	return jsonify(response), 200
+
+@app.route('blockchain/getCertainBlock?blocknumber', methods=['GET'])
+def getcertainblock():
+	blocknumber = request.args.get('blocknumber')
+	chain = self.chain 	#self = node
+	response = {'block': chain[blocknumber]}
+	return jsonify(response), 200
+
+
 #just a dummy implementation
 @app.route('transactions/create', methods=['POST'])
 def create_trans():

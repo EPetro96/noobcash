@@ -2,6 +2,10 @@ import block
 import wallet
 import blockchain
 
+import requests
+from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS
+
 
 class node:
 	def __init__(self, identifier, chain, current_id_count, NBCs):
@@ -114,7 +118,7 @@ class node:
 		utxo_for_receiver = transaction.transaction_outputs[1]
 		# if (utxo_for_receiver['recipient'] == self.wallet.public_key):	#if trans_out is about me, append it to my utxos
 		self.UTXOs.append(utxo_for_receiver) #<-- is this necessary ?
-		if (len(transaction_pool) == capacity):
+		if (len(transaction_pool) == TRANS_CAPACITY):
 			block = create_new_block(self.transaction_pool)
 			mined_block = mine_block(block)
 			return mined_block		#then broadcast_block from rest_api
@@ -152,15 +156,48 @@ class node:
 
 	#concencus functions
 
-	def valid_chain(self, chain):
-		#check for the longer chain accroose all nodes
+	def valid_chain(self, chain):	#checks for the longer chain accross all nodes. returns ip:port of the longest chain owner
+		max_length = len(chain)
+		my_dict = list(filter(lambda me: me['public_key'] == (self.wallet).public_key, ring))
+		node_with_max_chain = my_dict[0]['ip_port']
+		flag = 1
+		for node in self.ring:
+			uri = node['ip_port']
+			response = requests.get('http://' + uri + '/blockchain/getLength')
+
+			if response.status_code == 200:
+				length = response.json()['length']
+
+				if ((length > max_length) && (length > len(chain))):
+					max_length = length
+					node_with_max_chain = uri
+					flag = 0
+		if (flag == 1):
+			return ['0',0]	#i'm the one with the longest chain
+		return [node_with_max_chain,max_length]
 
 
 	def resolve_conflicts(self):
 		#resolve correct chain
 
+		node_with_max_chain = valid_chain(self.chain)
+		if (node_with_max_chain[0] == '0'):	#my chain is the longest
+			#something
+		else:
+			number_of_needed_blocks = node_with_max_chain[1] - len(self.chain)
+			for i in range (number_of_needed_blocks, node_with_max_chain[1]):
+				response = requests.get('http://' + node_with_max_chain[0] + '/blockchain/getCertainBlock?' + i)
+				if response.status_code == 200:
+					block = response.json()['block'] 	#check how to transfer object through http requests
+					if (not(validate_block(block))):
+						return False
+		return True
 
-	def validate_block(self, block):	#except for genesis block
+
+
+
+
+	def validate_block(self, block):	#except for genesis block. Called when receiving a (mined) block
 		lastblock = self.chain[-1]
 		last_hash = lastblock.hash
 		prev_hash = block.previousHash
@@ -174,7 +211,9 @@ class node:
    			#guess_hash = hashlib.sha256(guess).hexdigest()
         	if (myHash == block.hash):
 				self.chain.append(block)
+				return True
 			else:
+				return False
 				#POULO	
-		return block
+		#return block
 
