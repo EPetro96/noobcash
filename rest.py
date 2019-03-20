@@ -2,14 +2,19 @@ import requests
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
+import Crypto
+import Crypto.Random
+from Crypto.Hash import SHA
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
 
-import block
-import node
+
+from block import *
+from node import *
 #import blockchain
-import wallet
-import transaction
-import wallet
-import time
+from wallet import *
+from transaction import *
+from time import time
 
 
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
@@ -21,7 +26,7 @@ app = Flask(__name__)
 CORS(app)
 #blockchain = Blockchain()		#??? etsi ???
 #blockchain = []	
-self_node = node(0,[],0)#,500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
+self_node = node(0,[],0) #,500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
 									#xtypane sthn create
 
 
@@ -33,16 +38,25 @@ self_node = node(0,[],0)#,500 nbcs)	#identifier symfwna me to poio node eimaste.
 # 	identifier = request.args.get('id') 
 # 		#id, chain, current_id_count, NBCs
 
-@app.route('/node/genesis', methods=['POST'])
+@app.route('/node/genesis', methods=['GET'])
 def create_genesis():
 	listOfTransactions = []
 	genesis_outs = [{'unique_UTXO_id':-1, 'transaction_id': 0, 'recipient': 0, 'amount':0}, {'unique_UTXO_id': self_node.next_utxo_unique_id, 'transaction_id': 0, 'recipient': (self_node.wallet).public_key, 'amount': 5*100}]
 	self_node.next_utxo_unique_id += 1
-	t = transaction(0, 0, self_node.wallet.public_key(), 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
+	random_gen = Crypto.Random.new().read
+	private_key = RSA.generate(1024, random_gen)
+	#p_string = str(private_key)
+	t = Transaction(0, private_key, self_node.wallet.public_key, 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
 	listOfTransactions.append(t)
 	timestamp = time()
-	block = block(0, 1, timestamp, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
+	block = Block(0, 1, timestamp, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
 	(self_node.chain).append(block)
+	response = {'genesis': block.timestamp}
+
+	return jsonify(response), 200
+
+	# response = {'genesis_block': block.listOfTransactions}
+    # return jsonify(response), 200
 	#return 200
 
 @app.route('/node/receivegenesis?chain', methods=['POST'])
@@ -88,7 +102,7 @@ def validate_received_transaction():
 	transaction = request.args.get('trans')		#??
 	self_node.validate_transaction(transaction)
 
-@app.route('block/receiveblock?block',methods=['POST'])
+@app.route('/block/receiveblock?block',methods=['POST'])
 def validate_received_block():
 	block = request.args.get('block')
 	self_node.validate_block(block)
@@ -99,7 +113,7 @@ def get_chain_length():
 	response = {'length': len(self_node.chain)}
 	return jsonify(response), 200
 
-@app.route('blockchain/getCertainBlock?blocknumber', methods=['GET'])
+@app.route('/blockchain/getCertainBlock?blocknumber', methods=['GET'])
 def getcertainblock():
 	blocknumber = request.args.get('blocknumber')
 	chain = self_node.chain 	#self = node
@@ -108,7 +122,7 @@ def getcertainblock():
 
 
 #just a dummy implementation
-@app.route('transactions/create', methods=['POST'])
+@app.route('/transactions/create', methods=['POST'])
 def create_trans():
 	trans = create_transaction(sender, receiver, signature, ammount)
 

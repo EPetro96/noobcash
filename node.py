@@ -1,15 +1,23 @@
-import block
-import wallet
-import transaction
+from block import *
+#from node import *
 #import blockchain
+from wallet import *
+from transaction import *
 
 import requests
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
+import Crypto
+import Crypto.Random
+from Crypto.Hash import SHA
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+
+MINING_DIFFICULTY = 4
 
 class node:
-	def __init__(self, identifier, chain, current_id_count, NBCs):	#chain = []
+	def __init__(self, identifier, chain, current_id_count):	#chain = []
 		self.id = identifier
 		# self.NBC=100;
 		##set
@@ -26,7 +34,7 @@ class node:
 		#create a block???
 		#self.block = create_new_block
 
-		self.ring[]#{'id':0,'ip_port':bootstrap_ip,'public_key':bootstrap_public_key}] #???  #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
+		self.ring = [] #{'id':0,'ip_port':bootstrap_ip,'public_key':bootstrap_public_key}] #???  #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
 		#list of dictionaries {'id', 'ip_port', 'public_key', 'balance'}
 
 
@@ -56,7 +64,7 @@ class node:
 			identifier = self.current_id_count
 			ip_port = ip + ':' + port
 			ring.append({'id':identifier,'ip_port':ip_port,'public_key':public_key,'balance':balance})
-			self.current_id_count++
+			self.current_id_count += 1
 			if(self.current_id_count == 5):
 				#broadcast the ring
 				for node in range(1,len(ring)):
@@ -70,7 +78,7 @@ class node:
 					requests.post('http://' + uri + '/node/receivegenesis?' + genesis_block)
 
 					t = create_transaction(self.wallet.public_key, node['public_key'], 100)
-			if (not(identifier == 0) && self.current_id_count < 5):
+			if (not(identifier == 0) and self.current_id_count < 5):
 				requests.post('http://' + ip_port + '/node/create?' + identifier)
 				#maybe requests for first (100 NBCs) transactions ?
 
@@ -80,13 +88,19 @@ class node:
 
 
 	def create_transaction(self, sender, receiver, amount): 	#sender-receiver ids
-		sender_public_key = ring{'id' }	#tbd
-		recv_public_key = ring{str(receiver)}	#tbd
+
+		for dicts in ring:
+			if (dicts['ip_port'] == sender):
+				sender_public_key = dicts['public_key']
+
+		for dicts in ring:
+			if (dicts['ip_port'] == receiver):
+				recv_public_key = dicts['public_key']
 		
 		acc = 0
 		transaction_in = []
 		for utxo in self.UTXOs:
-			if (utxo['recipient'] = self.wallet.public_key):
+			if (utxo['recipient'] == self.wallet.public_key):
 				acc += utxo['amount']
 				transaction_in.append(utxo['unique_UTXO_id'])
 				if (acc >= amount):
@@ -157,8 +171,8 @@ class node:
 
 	def mine_block(self, block):
 		nonce = 0
-        while self.valid_proof(nonce, block) is False:
-            nonce += 1
+		while (self.valid_proof(nonce, block) is False):
+			nonce += 1
 		block.nonce = nonce
 		self.chain.append(block)
 		return block
@@ -179,7 +193,7 @@ class node:
 		last_hash = block.previousHash
 		timestamp = block.timestamp
 		guess = (str(transactions)+str(last_hash)+str(nonce)+str(timestamp)).encode()
-        guess_hash = hashlib.sha256(guess).hexdigest()
+		guess_hash = hashlib.sha256(guess).hexdigest()
 		if (guess_hash[:difficulty] == '0'*difficulty):
 			block.hash = guess_hash
 			return True
@@ -203,7 +217,7 @@ class node:
 			if response.status_code == 200:
 				length = response.json()['length']
 
-				if ((length > max_length) && (length > len(chain))):
+				if ((length > max_length) and (length > len(chain))):
 					max_length = length
 					node_with_max_chain = uri
 					flag = 0
@@ -216,9 +230,7 @@ class node:
 		#resolve correct chain
 
 		node_with_max_chain = valid_chain(self.chain)
-		if (node_with_max_chain[0] == '0'):	#my chain is the longest
-			#do nothing
-		else:
+		if (node_with_max_chain[0] != '0'):	#my chain is the longest
 			number_of_needed_blocks = node_with_max_chain[1] - len(self.chain)
 			for i in range (number_of_needed_blocks, node_with_max_chain[1]): 	#maybe number_of_needed_blocks + 1
 				response = requests.get('http://' + node_with_max_chain[0] + '/blockchain/getCertainBlock?' + i)
@@ -247,13 +259,13 @@ class node:
 		prev_hash = block.previousHash
 		if (prev_hash != last_hash):
 			resolve_conflicts()
-		else
+		else:
 			#transactions = block.listOfTransactions
 			#timestamp = block.timestamp
 			myHash = block.myHash()
 			#guess = (str(transactions)+str(prev_hash)+str(nonce)+str(timestamp)).encode()
    			#guess_hash = hashlib.sha256(guess).hexdigest()
-        	if (myHash == block.hash):
+			if (myHash == block.hash):
 				self.chain.append(block)
 			# 	return True
 			# else:

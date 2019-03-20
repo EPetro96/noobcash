@@ -12,11 +12,11 @@ class Block:
 		self.nonce = nonce
 		self.listOfTransactions = listOfTransactions
 	
-	def myHash:
+	def myHash():
 		#CHECK AGAIN IF THAT"S WHAT WE WANT
 		#calculate self.hash
 		guess = (str(self.listOfTransactions)+str(self.previousHash)+str(self.nonce)+str(self.timestamp)).encode()
-        return hashlib.sha256(guess).hexdigest()
+		return hashlib.sha256(guess).hexdigest()
         
 
 
