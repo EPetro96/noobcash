@@ -2,9 +2,10 @@
 Distributed Systems project 2018-2019
 
 ## ---- TO DO ----
-## SEE WHEN TO REMOVE UTXOS
+## SEE WHEN TO REMOVE UTXOS 	DONE(?)
 ## GENIKA NA KATALAVOUME PWS METAFERONTAI TA JSONIFY KTL
 ## CHECK THREADS
+# PREPEI NA MHN AXRHSTEYOYME TA APOMEINARIA TOU TRANSACTION
 ## -------BACKEND--------
 	1)UTXOs (dictionary. (unique_UTXO_id, transaction_id, sender/receiver_addres, ammount_of_coins))	MAYBE DONE(!)
 	----REMEMBER: Update UTXOs in case of conflict!!	DONE!
@@ -14,7 +15,7 @@ Distributed Systems project 2018-2019
 	5)figure out transaction_ids and utxo_ids, and more....  DONE!
 	6)check myhash in block 	(not wrong right now)
 	7)finish register_node_to_ring	DONE!
-	8)Genesis Block
+	8)Genesis block 	(When creating bootstrap node, as a http request) DONE(?)
 	9)when a new node is inserted transmit blockchain to him
 	10)what happens with first transactions (should they be mined? should we treat them specially?) logika afou mpoun oloi stelnoume transactions
 	   kai ta kanoume APLWS validate

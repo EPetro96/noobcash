@@ -9,6 +9,7 @@ import node
 import wallet
 import transaction
 import wallet
+import time
 
 
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
@@ -35,11 +36,19 @@ self_node = node(0,[],0)#,500 nbcs)	#identifier symfwna me to poio node eimaste.
 @app.route('/node/genesis', methods=['POST'])
 def create_genesis():
 	listOfTransactions = []
-	t = transaction(0, 0, n.wallet.public_key(), 5*100)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), node.wallet.kati pws?
+	genesis_outs = [{'unique_UTXO_id':-1, 'transaction_id': 0, 'recipient': 0, 'amount':0}, {'unique_UTXO_id': self_node.next_utxo_unique_id, 'transaction_id': 0, 'recipient': (self_node.wallet).public_key, 'amount': 5*100}]
+	self_node.next_utxo_unique_id += 1
+	t = transaction(0, 0, self_node.wallet.public_key(), 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
 	listOfTransactions.append(t)
-	block = self_node.create_new_block(1, 0.0, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
-	blockchain.append(block)
+	timestamp = time()
+	block = block(0, 1, timestamp, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
+	(self_node.chain).append(block)
 	#return 200
+
+@app.route('/node/receivegenesis?chain', methods=['POST'])
+def receive_init_chain():
+	init_chain = request.args.get('chain')
+	self_node.chain = init_chain
 
 @app.route('/node/create?id', methods=['POST'])
 def create_node():

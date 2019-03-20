@@ -64,6 +64,12 @@ class node:
 					broad_ring = {'ring': ring} 	#??
 					jsonify(broad_ring) 			#??
 					requests.post('http://' + uri + '/node/ring?' + broad_ring)
+
+					genesis_block = self.chain
+					jsonify(genesis_block)
+					requests.post('http://' + uri + '/node/receivegenesis?' + genesis_block)
+
+					t = create_transaction(self.wallet.public_key, node['public_key'], 100)
 			if (not(identifier == 0) && self.current_id_count < 5):
 				requests.post('http://' + ip_port + '/node/create?' + identifier)
 				#maybe requests for first (100 NBCs) transactions ?
@@ -73,17 +79,18 @@ class node:
 		#bottstrap node informs all other nodes and gives the request node an id and 100 NBCs
 
 
-	def create_transaction(self, sender, receiver, signature, amount): 	#sender-receiver ids
+	def create_transaction(self, sender, receiver, amount): 	#sender-receiver ids
 		sender_public_key = ring{'id' }	#tbd
 		recv_public_key = ring{str(receiver)}	#tbd
 		
 		acc = 0
 		transaction_in = []
 		for utxo in self.UTXOs:
-			acc += utxo['amount']
-			transaction_in.append(utxo['unique_UTXO_id'])
-			if (acc >= amount):
-				break
+			if (utxo['recipient'] = self.wallet.public_key):
+				acc += utxo['amount']
+				transaction_in.append(utxo['unique_UTXO_id'])
+				if (acc >= amount):
+					break
 		if (acc < amount):
 			return null	#null?
 
@@ -115,8 +122,8 @@ class node:
 		sender_public_key = transaction.sender_address
 		if (transaction.verify_signature(sender_public_key)):
 			if (all(elem in self.UTXOs  for elem in transaction.transaction_inputs)):	#check MY utxos for transaction.inputs. 
-				for utxo in transaction.transaction_inputs:
-					self.UTXOs.remove(utxo)		#If valid, take trans_inputs out of my UTXOS.
+				for utxo_id in transaction.transaction_inputs:
+					self.UTXOs = [utxo for utxo in self.UTXOs if utxo['unique_UTXO_id'] != utxo_id]		#If valid, take trans_inputs out of my UTXOS.
 
 				#Create two new utxos for THIS transaction and add them to my utxos
 				if (self.UTXOs[-1][unique_UTXO_id] >= self.next_utxo_unique_id):
@@ -223,8 +230,11 @@ class node:
 					#fix our utxos
 					for trans in block.listOfTransactions:
 						if trans in self.transaction_pool:	#if transaction in our pool
-							self.transaction_pool.remove(trans) 	#remove it
-						self.UTXOs = self.UTXOs + trans.transaction_outputs
+							self.transaction_pool.remove(trans) 	#remove it and do nothing about the utxos
+						else: 								#if you dont' have it, you should fix your utxos
+							for utxo_id in trans.transaction_inputs:
+								self.UTXOs = [utxo for utxo in self.UTXOs if utxo['unique_UTXO_id'] == utxo_id] 	#remove possible utxo_inputs still in our utxos
+							self.UTXOs = self.UTXOs + trans.transaction_outputs
 		#return True
 
 
