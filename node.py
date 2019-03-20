@@ -32,7 +32,7 @@ class node:
 
 
 
-	def create_new_block(listOfTransactions):
+	def create_new_block(self, listOfTransactions):
 		lastblock = self.chain[-1]
 		previousHash = lastblock.hash 	
 		timestamp = time()
@@ -101,9 +101,10 @@ class node:
 
 	def broadcast_transaction(self, transaction):
 		for node in self.ring:
-			uri = node['ip_port']
-			trans = jsonify(transaction) 			#??
-			requests.post('http://' + uri + '/transaction/receivetransaction?' + trans)
+			if (node['id'] != self.id):		#do not broadcast to myself
+				uri = node['ip_port']
+				trans = jsonify(transaction) 			#??
+				requests.post('http://' + uri + '/transaction/receivetransaction?' + trans)
 		
 
 
@@ -158,9 +159,10 @@ class node:
 
 	def broadcast_block(self, mined_block):
 		for node in self.ring:
-			uri = node['ip_port']
-			block = jsonify(mined_block) 			#??
-			requests.post('http://' + uri + '/block/receiveblock?' + block)
+			if (node['id'] != self.id):		#do not broadcast to myself
+				uri = node['ip_port']
+				block = jsonify(mined_block) 			#??
+				requests.post('http://' + uri + '/block/receiveblock?' + block)
 		#return list_of_ips
 
 		
@@ -211,7 +213,7 @@ class node:
 			#do nothing
 		else:
 			number_of_needed_blocks = node_with_max_chain[1] - len(self.chain)
-			for i in range (number_of_needed_blocks, node_with_max_chain[1]):
+			for i in range (number_of_needed_blocks, node_with_max_chain[1]): 	#maybe number_of_needed_blocks + 1
 				response = requests.get('http://' + node_with_max_chain[0] + '/blockchain/getCertainBlock?' + i)
 				if response.status_code == 200:
 					block = response.json()['block'] 	#check how to transfer object through http requests

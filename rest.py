@@ -20,7 +20,7 @@ app = Flask(__name__)
 CORS(app)
 #blockchain = Blockchain()		#??? etsi ???
 #blockchain = []	
-self_node = node(0,[],0),#500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
+self_node = node(0,[],0)#,500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
 									#xtypane sthn create
 
 
@@ -52,11 +52,14 @@ def register_ring():
 	ring = request.args.get('ring')
 	self_node.ring = ring
 
-@app.route('/node/register?public_key', methods=['POST'])
+@app.route('/node/register', methods=['POST'])
 def register_node():
 	port = 5000 	#deite to kai meta
 	ip = request.remote_addr
-	public_key = request.args.get('public_key')
+
+	#public_key = request.args.get('public_key')
+
+	public_key = self_node.wallet.public_key
 	self_node.register_node_to_ring(public_key, ip, port)	#node that runs the rest (bootstrap node here)
 	#t = transaction(n.wallet.public_key(),n.wallet.private_key() ,public_key, 100)
 	#signature = t.sign_transaction(n.wallet.private_key())
@@ -73,7 +76,7 @@ def get_transactions():
 
 @app.route('/transaction/receivetransaction?trans', methods=['POST'])
 def validate_received_transaction():
-	transaction = request.args.get('trans')
+	transaction = request.args.get('trans')		#??
 	self_node.validate_transaction(transaction)
 
 @app.route('block/receiveblock?block',methods=['POST'])
