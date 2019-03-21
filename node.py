@@ -68,18 +68,33 @@ class node:
 			self.current_id_count += 1
 			if(self.current_id_count == 5):
 				#broadcast the ring
-				for node in range(1,len(self.ring)):
+				for node in range(1,5):
 					uri = self.ring[node]['ip_port']
-					broad_ring = {'ring': self.ring} 	#??
-					#jsonify(broad_ring) 			#??
-					#requests.post('http://' + uri + '/node/ring?'.format(broad_ring))
-					requests.post('http://' + uri + '/node/ring?42')
+					for ring_iter in range(0,5):
+						portip = str(self.ring[ring_iter]['ip_port'])
+						pkey = self.ring[ring_iter]['public_key']
+						broad_ring = {'id':self.ring[ring_iter]['id'], 'ip_port': portip, 'amount': self.ring[ring_iter]['amount'], 'public_key':pkey.exportKey(format='DER')} 	#??   binascii.hexlify(pkey.exportKey(format='DER')).decode('ascii')
+						requests.post('http://' + uri + '/node/ring', params = broad_ring)
+					
 
-					#genesis_block = self.chain
-					#jsonify(genesis_block)
-					#requests.post('http://' + uri + '/node/receivegenesis?' + genesis_block)
+
+
+					# genesis_block = self.chain[0]
+					# g_block = genesis_block.to_dict()
+					# # done_with_trans = {'done': 0}
+					# # for transdict in g_block['listOfTransactions']:
+					# # 	transdict.update(done_with_trans)
+					# # 	requests.post('http://' + uri + '/node/receivegenesis', params = transdict)
+					# # g_block.pop('listOfTransactions', None)
+					# # done_with_trans['done'] = 1
+					# # g_block.update(done_with_trans)
+					# r = requests.get('http://' + uri + '/node/receivegenesis', json = g_block)
+					# print(r.content)
+
 					#lock ??
+
 					t = self.create_transaction(self.wallet.public_key, self.ring[node]['public_key'], 100)
+					
 					#unlock ??
 			if (not(identifier == 0) and self.current_id_count < 5):
 				requests.post('http://' + ip_port + '/node/create?id=' + str(identifier))
@@ -125,8 +140,10 @@ class node:
 		for node in self.ring:
 			if (node['id'] != self.id):		#do not broadcast to myself
 				uri = node['ip_port']
-				trans = jsonify(transaction.to_dict()) 			#??
-				requests.post('http://' + uri + '/transaction/receivetransaction?trans=' + trans)
+				dict_trans = transaction.to_dict() 			#??
+				print("broadcast_transaction: AFTER TO DICT")
+				requests.post('http://' + uri + '/transaction/receivetransaction', json = dict_trans)
+				#print(r.content)
 		
 
 
@@ -169,7 +186,7 @@ class node:
 				self.next_utxo_unique_id += 1
 				transaction_out = [utxo_for_sender, utxo_for_receiver]
 				transaction.transaction_outputs = transaction_out
-				self.add_transaction_to_block(transaction)
+				#self.add_transaction_to_block(transaction)
 		
 
 	def add_transaction_to_block(self, transaction):		

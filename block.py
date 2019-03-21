@@ -1,4 +1,5 @@
 #import blockchain
+from transaction import *
 import json
 
 
@@ -11,6 +12,21 @@ class Block:
 		self.hash = 42 					#dummy initializer
 		self.nonce = nonce
 		self.listOfTransactions = listOfTransactions
+
+
+	def to_dict(self):
+		newlist = []
+		for trans in self.listOfTransactions:
+			newlist.append(trans.to_dict())
+		#newlist = json.dumps(newlist)
+		return OrderedDict({'block_index': self.index,
+							'previousHash': self.previousHash,
+							'timestamp': self.timestamp,
+							'hash': self.hash,
+							'nonce': self.nonce,
+							'listOfTransactions': newlist,
+							})
+		
 	
 	def myHash():
 		#CHECK AGAIN IF THAT"S WHAT WE WANT

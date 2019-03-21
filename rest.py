@@ -28,6 +28,7 @@ CORS(app)
 #blockchain = []	
 self_node = node(0,[],0) #,500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
 									#xtypane sthn create
+#list_of_current_block_transactions = []
 
 
 
@@ -41,7 +42,9 @@ self_node = node(0,[],0) #,500 nbcs)	#identifier symfwna me to poio node eimaste
 @app.route('/node/genesis', methods=['POST'])
 def create_genesis():
 	listOfTransactions = []
-	genesis_outs = [{'unique_UTXO_id':-1, 'transaction_id': 0, 'recipient': 0, 'amount':0}, {'unique_UTXO_id': self_node.next_utxo_unique_id, 'transaction_id': 0, 'recipient': (self_node.wallet).public_key, 'amount': 5*100}]
+	another_random_gen = Crypto.Random.new().read
+	another_private_key = RSA.generate(1024, another_random_gen)
+	genesis_outs = [{'unique_UTXO_id':-1, 'transaction_id': 0, 'recipient': another_private_key, 'amount':0}, {'unique_UTXO_id': self_node.next_utxo_unique_id, 'transaction_id': 0, 'recipient': (self_node.wallet).public_key, 'amount': 5*100}]
 	self_node.next_utxo_unique_id += 2
 	self_node.UTXOs = self_node.UTXOs + genesis_outs
 	random_gen = Crypto.Random.new().read
@@ -61,10 +64,33 @@ def create_genesis():
     # return jsonify(response), 200
 	return 'ok', 200
 
-@app.route('/node/receivegenesis?chain', methods=['POST'])
+@app.route('/node/receivegenesis', methods=['GET'])
 def receive_init_chain():
-	init_chain = request.args.get('chain')
-	self_node.chain = init_chain
+	received_block = request.getjson()
+	index = received_block['index']
+	previousHash = received_block['previousHash']
+	#listOfTransactions = received_block['listOfTransactions']
+
+	response = {'index':index, 'previousHash': previousHash}
+	return jsonify(response), 200
+
+@app.route('/node/receivegenesistransactions', methods=['POST'])
+def receivegenesistransactions():
+	transaction_id = request.args.get('transaction_id')
+	sender_address = request.args.get('sender_address')
+	recipient_address = request.args.get('recipient_address')
+	transaction_inputs = request.args.get('transaction_inputs')
+	transaction_outputs_id_first = request.args.get('transaction_outputs_id_first')
+	transaction_outputs_amount_first = request.args.get('transaction_outputs_amount_first')
+	transaction_outputs_transid_first = request.args.get('transaction_outputs_transid_first')
+	transaction_outputs_recipient_first = request.args.get('transaction_outputs_recipient_first')
+	transaction_outputs_id_second = request.args.get('transaction_outputs_id_second')
+	transaction_outputs_amount_second = request.args.get('transaction_outputs_amount_second')
+	transaction_outputs_transid_second = request.args.get('transaction_outputs_transid_second')
+	transaction_outputs_recipient_second = request.args.get('transaction_outputs_recipient_second')
+	transaction_signature = request.args.get('transaction_signature')
+	amount = request.args.get('amount')
+
 
 @app.route('/node/create', methods=['POST'])
 def create_node():
@@ -72,10 +98,32 @@ def create_node():
 	#self_node = node(identifier,[],0),#nbcs)	#theloume kapws self_node prospelasimo apo olo to rest?
 	self_node.identifier = identifier			#change my id. everything else is fine. now self_node is reachable everywhere in the rest
 
-@app.route('/node/ring?ring', methods=['POST'])
+@app.route('/node/ring', methods=['POST'])
 def register_ring():
-	ring = request.args.get('ring')
-	self_node.ring = ring
+	identifier = request.args.get('id')
+	ip_port = request.args.get('ip_port')
+	amount = request.args.get('amount')
+	pkey_string = request.args.get('public_key')
+	#rsa_public_key = binascii.hexlify(pkey_string.exportKey(format='DER')).decode('ascii')
+	rsa_public_key = RSA.importKey(pkey_string)
+	ring = {'id': identifier, 'ip_port':ip_port, 'public_key': rsa_public_key, 'amount': amount}
+	self_node.ring.append(ring)
+	
+@app.route('/node/returnring', methods=['GET'])
+def return_ring():
+
+	#return jsonify(self_node.ring[5]), 200
+	if (self_node.ring[0]['public_key'] is self_node.ring[5]['public_key']):
+	 	return "OLA KOMPLE", 200
+	else:
+	 	return "SKATA", 404
+
+@app.route('/test', methods=['GET'])
+def test():
+	id_ = request.args.get('genesis')
+	#id2 = request.args.get('key2')
+	return id_, 200
+
 
 @app.route('/node/register', methods=['GET'])
 def register_node():
@@ -105,9 +153,39 @@ def get_transactions():
 
 @app.route('/transaction/receivetransaction', methods=['POST'])
 def validate_received_transaction():
-	transaction = request.args.get('trans')		#??
+	transaction = request.get_json()		#??
+	transaction_id = transaction['transaction_id']
+	amount = transaction['amount']
+	transaction_inputs = transaction['transaction_inputs']
+	transaction_outputs_id_first = transaction['transaction_outputs_id_first']
+	transaction_outputs_amount_first = transaction['transaction_outputs_amount_first']
+	transaction_outputs_transid_first = transaction['transaction_outputs_transid_first']
+	transaction_outputs_id_second = transaction['transaction_outputs_id_second']
+	transaction_outputs_amount_second = transaction['transaction_outputs_amount_second']
+	transaction_outputs_transid_second = transaction['transaction_outputs_transid_second']
+	transaction_signature = transaction['transaction_signature']
+	transaction_outputs_recipient_first = transaction['transaction_outputs_recipient_first']
+	sender_address = transaction['sender_address']
+	recipient_address = transaction['recipient_address']
+	transaction_outputs_recipient_second = transaction['transaction_outputs_recipient_second']
+	
+	sender_address = RSA.importKey(base64.b64decode(sender_address))
+	recipient_address = RSA.importKey(base64.b64decode(recipient_address))
+	transaction_outputs_recipient_first = RSA.importKey(base64.b64decode(transaction_outputs_recipient_first))
+	transaction_outputs_recipient_second = RSA.importKey(base64.b64decode(transaction_outputs_recipient_second))
 
-	self_node.validate_transaction(transaction)
+	transaction_outputs = [{'unique_UTXO_id':transaction_outputs_id_first,'amount':transaction_outputs_amount_first, 'transaction_id':transaction_outputs_transid_first ,'recipient':transaction_outputs_recipient_first}, 
+							{'unique_UTXO_id':transaction_outputs_id_second,'amount':transaction_outputs_amount_second, 'transaction_id':transaction_outputs_transid_second ,'recipient':transaction_outputs_recipient_second}]
+
+	t = Transaction(sender_address, None, recipient_address, amount, transaction_id, transaction_inputs, transaction_outputs)
+	t.Signature = transaction_signature
+
+	# response = {'trans_id': trans_id, 'amount': amount, 'sender_address':sender_address, 'transaction_inputs': transaction_inputs, 'transaction_outputs_transid_second': transaction_outputs_transid_second,
+	# 			'transaction_outputs_amount_second': transaction_outputs_amount_second, 'transaction_outputs_id_second': transaction_outputs_id_second, 'transaction_outputs_transid_first':transaction_outputs_transid_first,
+	# 			'transaction_outputs_amount_first': transaction_outputs_amount_first, 'transaction_outputs_id_first': transaction_outputs_id_first, 'transaction_signature': transaction_signature, 'transaction_outputs_recipient_first': transaction_outputs_recipient_first,
+	# 			'recipient_address': recipient_address, 'transaction_outputs_recipient_second': transaction_outputs_recipient_second}
+	#return jsonify(response), 200
+	self_node.validate_transaction(t)
 
 @app.route('/block/receiveblock?block',methods=['POST'])
 def validate_received_block():

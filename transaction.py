@@ -8,32 +8,45 @@ from Crypto.Hash import SHA
 from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
+import base64
+
 import requests
 from flask import Flask, jsonify, request, render_template
 
 
 class Transaction:
 
-	def __init__(self, sender_address, sender_private_key, recipient_address, value, identity, transaction_in, transaction_out):
-		self.sender_address = sender_address
-		self.receiver_address = recipient_address
-		self.amount = value
-		self.transaction_id = identity
-		self.transaction_inputs = transaction_in
-		self.transaction_outputs = transaction_out
-		self.Signature = self.sign_transaction(sender_private_key)
+	def __init__(self, sender_address = None, sender_private_key = None, recipient_address = None, value = None, identity = None, transaction_in = None, transaction_out = None):
+		if (not( sender_address is None)):
+			self.sender_address = sender_address
+		if (not( recipient_address is None)):
+			self.receiver_address = recipient_address
+		if (not( value is None)):
+			self.amount = value
+		if (not( identity is None)):
+			self.transaction_id = identity
+		if (not( transaction_in is None)):
+			self.transaction_inputs = transaction_in
+		if (not( transaction_out is None)):
+			self.transaction_outputs = transaction_out
+		if (not(sender_private_key is None)):
+			self.Signature = self.sign_transaction(sender_private_key)
 
 
 	def to_dict(self):
 		return OrderedDict({'transaction_id': self.transaction_id,
-							'sender_address': self.sender_address,
-							'recipient_address': binascii.hexlify(self.receiver_address.exportKey(format='DER')).decode('ascii'),
+							'sender_address': str(base64.b64encode(self.sender_address.exportKey(format='DER')),'utf-8'),
+							'recipient_address': str(base64.b64encode(self.receiver_address.exportKey(format='DER')),'utf-8') ,
 							'transaction_inputs': self.transaction_inputs,
-							'transaction_outputs_ids': self.transaction_outputs[1]['unique_UTXO_id'],
-							'transaction_outputs_amount': self.transaction_outputs[1]['amount'],
-							'transaction_outputs_transid': self.transaction_outputs[1]['transaction_id'],
-							'transaction_outputs_recipient': binascii.hexlify(self.transaction_outputs[1]['recipient'].exportKey(format='DER')).decode('ascii'),
-							'transaction_signatur':self.Signature,
+							'transaction_outputs_id_first': self.transaction_outputs[0]['unique_UTXO_id'],
+							'transaction_outputs_amount_first': self.transaction_outputs[0]['amount'],
+							'transaction_outputs_transid_first': self.transaction_outputs[0]['transaction_id'],
+							'transaction_outputs_recipient_first': str(base64.b64encode(self.transaction_outputs[0]['recipient'].exportKey(format='DER')),'utf-8'),
+							'transaction_outputs_id_second': self.transaction_outputs[1]['unique_UTXO_id'],
+							'transaction_outputs_amount_second': self.transaction_outputs[1]['amount'],
+							'transaction_outputs_transid_second': self.transaction_outputs[1]['transaction_id'],
+							'transaction_outputs_recipient_second': str(base64.b64encode(self.transaction_outputs[1]['recipient'].exportKey(format='DER')),'utf-8'),
+							'transaction_signature':self.Signature,
 							'amount': self.amount})
 		
 
