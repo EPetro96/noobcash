@@ -44,13 +44,15 @@ def create_genesis():
 	listOfTransactions = []
 	another_random_gen = Crypto.Random.new().read
 	another_private_key = RSA.generate(1024, another_random_gen)
-	genesis_outs = [{'unique_UTXO_id':-1, 'transaction_id': 0, 'recipient': another_private_key, 'amount':0}, {'unique_UTXO_id': self_node.next_utxo_unique_id, 'transaction_id': 0, 'recipient': (self_node.wallet).public_key, 'amount': 5*100}]
+	another_private_key_string = private_key_string = str(base64.b64encode(another_private_key.exportKey(format='DER')),'utf-8')
+	genesis_outs = [{'unique_UTXO_id':-1, 'transaction_id': 0, 'recipient': another_private_key_string, 'amount':0}, {'unique_UTXO_id': self_node.next_utxo_unique_id, 'transaction_id': 0, 'recipient': (self_node.wallet).public_key, 'amount': 5*100}]
 	self_node.next_utxo_unique_id += 2
 	self_node.UTXOs = self_node.UTXOs + genesis_outs
 	random_gen = Crypto.Random.new().read
 	private_key = RSA.generate(1024, random_gen)
+	private_key_string = str(base64.b64encode(private_key.exportKey(format='DER')),'utf-8')
 	#p_string = str(private_key)
-	t = Transaction(0, private_key, self_node.wallet.public_key, 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
+	t = Transaction(0, private_key_string, self_node.wallet.public_key, 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
 	listOfTransactions.append(t)
 	timestamp = time()
 	block = Block(0, 1, timestamp, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
@@ -100,14 +102,11 @@ def create_node():
 
 @app.route('/node/ring', methods=['POST'])
 def register_ring():
-	identifier = request.args.get('id')
-	ip_port = request.args.get('ip_port')
-	amount = request.args.get('amount')
-	pkey_string = request.args.get('public_key')
-	#rsa_public_key = binascii.hexlify(pkey_string.exportKey(format='DER')).decode('ascii')
-	rsa_public_key = RSA.importKey(pkey_string)
-	ring = {'id': identifier, 'ip_port':ip_port, 'public_key': rsa_public_key, 'amount': amount}
-	self_node.ring.append(ring)
+	ring_dict = request.get_json() 	#{0: {stoixeia 0ou}, 1:{stoixeia 1ou}...}
+	self_node.ring = [value for value in ring_dict.values()]
+	
+	response = {'key': self_node.ring[0]['public_key']}
+	return jsonify(response),200
 	
 @app.route('/node/returnring', methods=['GET'])
 def return_ring():
@@ -133,13 +132,13 @@ def register_node():
 	iterator = int(iterator)
 	#public_key = request.args.get('public_key')
 
-	public_key = self_node.wallet.public_key
+	public_key = self_node.wallet.public_key 	#this is strign
 	self_node.register_node_to_ring(public_key, ip, port)	#node that runs the rest (bootstrap node here)
 	#t = transaction(n.wallet.public_key(),n.wallet.private_key() ,public_key, 100)
 	#signature = t.sign_transaction(n.wallet.private_key())
 	#node.create_transaction(n.wallet.public_key(), public_key, signature, t)
 	ring = self_node.ring[iterator]
-	response = {'id':ring['id'],'ip_port':ring['ip_port'],'public_key':binascii.hexlify(ring['public_key'].exportKey(format='DER')).decode('ascii'),'amount':ring['amount']} 	
+	response = {'id':ring['id'],'ip_port':ring['ip_port'],'public_key':ring['public_key'],'amount':ring['amount']} 	
 	return jsonify(response), 200
 
 # get all transactions in the blockchain

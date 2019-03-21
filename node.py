@@ -8,6 +8,8 @@ import requests
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
+import base64
+
 import Crypto
 import Crypto.Random
 from Crypto.Hash import SHA
@@ -57,7 +59,9 @@ class node:
 		random_gen = Crypto.Random.new().read
 		private_key = RSA.generate(1024, random_gen)
 		public_key = private_key.publickey()		#check for binascii
-		return wallet(public_key, private_key, [])
+		public_key_string = str(base64.b64encode(public_key.exportKey(format='DER')),'utf-8')
+		private_key_string = str(base64.b64encode(private_key.exportKey(format='DER')),'utf-8')
+		return wallet(public_key_string, private_key_string, [])
 
 
 	def register_node_to_ring(self, public_key, ip, port):
@@ -70,15 +74,9 @@ class node:
 				#broadcast the ring
 				for node in range(1,5):
 					uri = self.ring[node]['ip_port']
-					for ring_iter in range(0,5):
-						portip = str(self.ring[ring_iter]['ip_port'])
-						pkey = self.ring[ring_iter]['public_key']
-						broad_ring = {'id':self.ring[ring_iter]['id'], 'ip_port': portip, 'amount': self.ring[ring_iter]['amount'], 'public_key':pkey.exportKey(format='DER')} 	#??   binascii.hexlify(pkey.exportKey(format='DER')).decode('ascii')
-						requests.post('http://' + uri + '/node/ring', params = broad_ring)
-					
-
-
-
+					dict_ring = {item['id']:item for item in self.ring}
+					r = requests.post('http://' + uri + '/node/ring', json = dict_ring)
+					print(r.content)
 					# genesis_block = self.chain[0]
 					# g_block = genesis_block.to_dict()
 					# # done_with_trans = {'done': 0}

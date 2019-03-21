@@ -35,17 +35,17 @@ class Transaction:
 
 	def to_dict(self):
 		return OrderedDict({'transaction_id': self.transaction_id,
-							'sender_address': str(base64.b64encode(self.sender_address.exportKey(format='DER')),'utf-8'),
-							'recipient_address': str(base64.b64encode(self.receiver_address.exportKey(format='DER')),'utf-8') ,
+							'sender_address': self.sender_address,
+							'recipient_address': self.receiver_address ,
 							'transaction_inputs': self.transaction_inputs,
 							'transaction_outputs_id_first': self.transaction_outputs[0]['unique_UTXO_id'],
 							'transaction_outputs_amount_first': self.transaction_outputs[0]['amount'],
 							'transaction_outputs_transid_first': self.transaction_outputs[0]['transaction_id'],
-							'transaction_outputs_recipient_first': str(base64.b64encode(self.transaction_outputs[0]['recipient'].exportKey(format='DER')),'utf-8'),
+							'transaction_outputs_recipient_first': self.transaction_outputs[0]['recipient'],
 							'transaction_outputs_id_second': self.transaction_outputs[1]['unique_UTXO_id'],
 							'transaction_outputs_amount_second': self.transaction_outputs[1]['amount'],
 							'transaction_outputs_transid_second': self.transaction_outputs[1]['transaction_id'],
-							'transaction_outputs_recipient_second': str(base64.b64encode(self.transaction_outputs[1]['recipient'].exportKey(format='DER')),'utf-8'),
+							'transaction_outputs_recipient_second': self.transaction_outputs[1]['recipient'],
 							'transaction_signature':self.Signature,
 							'amount': self.amount})
 		
@@ -53,9 +53,14 @@ class Transaction:
 	def sign_transaction(self, sender_private_key):
 		#Sign transaction with private key
 		#private_key = RSA.importKey(binascii.unhexlify(sender_private_key)) PREPEI NA BEI!!1!!1!!!11!FILIA STIN OIKOGENEIA
-		signer = PKCS1_v1_5.new(sender_private_key)
+		actual_private_key = RSA.importKey(base64.b64decode(sender_private_key))
+		
+		#actual_sender_address = RSA.importKey(base64.b64decode(self.sender_address))
+		#actual_receiver_address = RSA.importKey(base64.b64decode(self.receiver_address))
+
+		signer = PKCS1_v1_5.new(actual_private_key)
 		#h = SHA.new(str(self.to_dict()).encode('utf8'))
-		message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': binascii.hexlify(self.receiver_address.exportKey(format='DER')).decode('ascii'), 'amount':self.amount}
+		message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': self.receiver_address, 'amount':self.amount}
 		h = SHA.new(str(message).encode('utf8'))
 		return binascii.hexlify(signer.sign(h)).decode('ascii')
 		# message = (str(self.sender_address) + str(self.receiver_address) + str(self.amount)).encode()
@@ -67,8 +72,9 @@ class Transaction:
 	def verify_signature(self, sender_public_key):
 		#verify that the signature corresponds to sender's public key
 		#public_key = RSA.importKey(binascii.unhexlify(sender_public_key))
-		verifier = PKCS1_v1_5.new(sender_public_key)
+		actual_sender_public_key = RSA.importKey(base64.b64decode(sender_public_key))
+		verifier = PKCS1_v1_5.new(actual_sender_public_key)
 		#h = SHA.new(str(self.to_dict()).encode('utf8'))
-		message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': binascii.hexlify(self.receiver_address.exportKey(format='DER')).decode('ascii'), 'amount':self.amount}
+		message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': self.receiver_address, 'amount':self.amount}
 		h = SHA.new(str(message).encode('utf8'))
 		return verifier.verify(h, binascii.unhexlify(self.Signature))

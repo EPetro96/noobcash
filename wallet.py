@@ -19,9 +19,9 @@ class wallet:
 	def __init__(self, public_key, private_key, transactions):
 		##set
 
-		self.public_key = public_key
-		self.private_key = private_key
-		self.address = public_key
+		self.public_key = public_key 	#string
+		self.private_key = private_key 	#string
+		self.address = public_key 		#string
 		self.transactions = transactions
 
 	def balance(self, node):	#add all UTXOs concerning me
