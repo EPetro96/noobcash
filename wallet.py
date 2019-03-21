@@ -27,6 +27,6 @@ class wallet:
 	def balance(self, node):	#add all UTXOs concerning me
 		acc = 0
 		for utxo in node.UTXOs:
-			if (utxo['recipient'] == self.public_key):
+			if (utxo['recipient'] is self.public_key):
 				acc += utxo['amount']
 		return acc

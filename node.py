@@ -15,6 +15,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 
 MINING_DIFFICULTY = 4
+TRANS_CAPACITY = 5
 
 class node:
 	def __init__(self, identifier, chain, current_id_count):	#chain = []
@@ -63,23 +64,25 @@ class node:
 		if (self.id == 0):		#if i'm the bootstrap node
 			identifier = self.current_id_count
 			ip_port = ip + ':' + port
-			ring.append({'id':identifier,'ip_port':ip_port,'public_key':public_key,'balance':balance})
+			self.ring.append({'id':identifier,'ip_port':ip_port,'public_key':public_key,'amount':100}) 	#sketo public_key edw
 			self.current_id_count += 1
 			if(self.current_id_count == 5):
 				#broadcast the ring
-				for node in range(1,len(ring)):
-					uri = ring[node]['ip_port']
-					broad_ring = {'ring': ring} 	#??
-					jsonify(broad_ring) 			#??
-					requests.post('http://' + uri + '/node/ring?' + broad_ring)
+				for node in range(1,len(self.ring)):
+					uri = self.ring[node]['ip_port']
+					broad_ring = {'ring': self.ring} 	#??
+					#jsonify(broad_ring) 			#??
+					#requests.post('http://' + uri + '/node/ring?'.format(broad_ring))
+					requests.post('http://' + uri + '/node/ring?42')
 
-					genesis_block = self.chain
-					jsonify(genesis_block)
-					requests.post('http://' + uri + '/node/receivegenesis?' + genesis_block)
-
-					t = create_transaction(self.wallet.public_key, node['public_key'], 100)
+					#genesis_block = self.chain
+					#jsonify(genesis_block)
+					#requests.post('http://' + uri + '/node/receivegenesis?' + genesis_block)
+					#lock ??
+					t = self.create_transaction(self.wallet.public_key, self.ring[node]['public_key'], 100)
+					#unlock ??
 			if (not(identifier == 0) and self.current_id_count < 5):
-				requests.post('http://' + ip_port + '/node/create?' + identifier)
+				requests.post('http://' + ip_port + '/node/create?id=' + str(identifier))
 				#maybe requests for first (100 NBCs) transactions ?
 
 
@@ -87,26 +90,21 @@ class node:
 		#bottstrap node informs all other nodes and gives the request node an id and 100 NBCs
 
 
-	def create_transaction(self, sender, receiver, amount): 	#sender-receiver ids
-
-		for dicts in ring:
-			if (dicts['ip_port'] == sender):
-				sender_public_key = dicts['public_key']
-
-		for dicts in ring:
-			if (dicts['ip_port'] == receiver):
-				recv_public_key = dicts['public_key']
-		
+	def create_transaction(self, sender_public_key, recv_public_key, amount):
+		print("MOLIS MPHKA CREATE_TRANSACTION GAMW THN PANAGIA \n")
+		sender_private_key = self.wallet.private_key
 		acc = 0
 		transaction_in = []
 		for utxo in self.UTXOs:
-			if (utxo['recipient'] == self.wallet.public_key):
+			print("MPHKA FOR \n")
+			if (utxo['recipient'] is self.wallet.public_key):
 				acc += utxo['amount']
 				transaction_in.append(utxo['unique_UTXO_id'])
 				if (acc >= amount):
 					break
 		if (acc < amount):
-			return null	#null?
+			print(acc)
+			return None	#null?
 
 		identity = len(self.transaction_pool) + 1	#check again
 
@@ -116,16 +114,19 @@ class node:
 		#self.UTXOs.append(utxo_for_receiver)
 		#transaction_out = [utxo_for_sender, utxo_for_receiver]
 		transaction_out = []
+		print("IN CREATE_TRANSACTION. BEFORE TRANSACTION CONSTRUCTOR \n")
 		t = Transaction(sender_public_key, sender_private_key, recv_public_key, amount, identity, transaction_in, transaction_out)
-		validate_transaction(t)	#if we don't receive our own transaction from broadcast 
-		broadcast_transaction(t)
+		print("IN CREATE_TRANSACTION. BEFORE VALIDATE TRANSACTION \n")
+		self.validate_transaction(t)	#if we don't receive our own transaction from broadcast 
+		print("IN CREATE_TRANSACTION. RETURNED FROM VALIDATE TRANSACTION\n")
+		self.broadcast_transaction(t)
 
 	def broadcast_transaction(self, transaction):
 		for node in self.ring:
 			if (node['id'] != self.id):		#do not broadcast to myself
 				uri = node['ip_port']
-				trans = jsonify(transaction) 			#??
-				requests.post('http://' + uri + '/transaction/receivetransaction?' + trans)
+				trans = jsonify(transaction.to_dict()) 			#??
+				requests.post('http://' + uri + '/transaction/receivetransaction?trans=' + trans)
 		
 
 
@@ -133,25 +134,43 @@ class node:
 	def validate_transaction(self, transaction):		#it's called from rest when receiving a transaction
 		#use of signature and NBCs balance
 		#a)verify signature
+		print("IN VALIDATE TRANSACTION \n")
 		sender_public_key = transaction.sender_address
+		recv_public_key = transaction.receiver_address
 		if (transaction.verify_signature(sender_public_key)):
-			if (all(elem in self.UTXOs  for elem in transaction.transaction_inputs)):	#check MY utxos for transaction.inputs. 
+			print("IN FIRST IF OF VALIDATE\n")
+			print(self.UTXOs)
+			print(transaction.transaction_inputs)
+			found = 0
+			for utxo in self.UTXOs:
+				#if (all(elem in self.UTXOs for elem in transaction.transaction_inputs)):	#check MY utxos for transaction.inputs. 
+				if (utxo['unique_UTXO_id'] in transaction.transaction_inputs):
+					found += 1
+			if (found == len(transaction.transaction_inputs)):
+				print("IN SECOND IF OF VALIDATE\n")
 				for utxo_id in transaction.transaction_inputs:
 					self.UTXOs = [utxo for utxo in self.UTXOs if utxo['unique_UTXO_id'] != utxo_id]		#If valid, take trans_inputs out of my UTXOS.
+					print("took inputs out of my utxos\n")
 
 				#Create two new utxos for THIS transaction and add them to my utxos
-				if (self.UTXOs[-1][unique_UTXO_id] >= self.next_utxo_unique_id):
-					self.next_utxo_unique_id = self.UTXOs[-1][unique_UTXO_id] + 1
-				utxo_for_sender = {'unique_UTXO_id':self.next_utxo_unique_id, 'transaction_id': transaction.transaction_id, 'recipient': sender_public_key, 'amount':self.wallet.balance(self) - amount}
+				if (self.UTXOs[-1]['unique_UTXO_id'] >= self.next_utxo_unique_id):
+					self.next_utxo_unique_id = self.UTXOs[-1]['unique_UTXO_id'] + 1
+				utxo_for_sender = {'unique_UTXO_id':self.next_utxo_unique_id, 'transaction_id': transaction.transaction_id, 'recipient': sender_public_key, 'amount':self.wallet.balance(self) - transaction.amount}
 				self.UTXOs.append(utxo_for_sender)
+
+				print("appended first output to my utxos\n")
+				
 				self.next_utxo_unique_id += 1
-				utxo_for_receiver = {'unique_UTXO_id':self.next_utxo_unique_id, 'transaction_id': transaction.transaction_id, 'recipient': recv_public_key, 'amount':amount}
+				utxo_for_receiver = {'unique_UTXO_id':self.next_utxo_unique_id, 'transaction_id': transaction.transaction_id, 'recipient': recv_public_key, 'amount':transaction.amount}
 				self.UTXOs.append(utxo_for_receiver)
+				
+				print("appended second output to my utxos\n")
+				
 				self.next_utxo_unique_id += 1
 				transaction_out = [utxo_for_sender, utxo_for_receiver]
 				transaction.transaction_outputs = transaction_out
-				add_transaction_to_block(transaction)
-			
+				self.add_transaction_to_block(transaction)
+		
 
 	def add_transaction_to_block(self, transaction):		
 		#if enough transactions  mine
