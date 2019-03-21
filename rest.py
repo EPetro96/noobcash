@@ -68,13 +68,14 @@ def create_genesis():
 
 @app.route('/node/receivegenesis', methods=['GET'])
 def receive_init_chain():
-	received_block = request.getjson()
-	index = received_block['index']
-	previousHash = received_block['previousHash']
-	#listOfTransactions = received_block['listOfTransactions']
+	received_block = request.get_json()
+	self_node.chain.append(received_block)
+	# index = received_block['block_index']
+	# previousHash = received_block['previousHash']
+	# listOfTransactions = received_block['listOfTransactions']
 
-	response = {'index':index, 'previousHash': previousHash}
-	return jsonify(response), 200
+	# response = {'index':index, 'previousHash': previousHash, 'listOfTransactions': listOfTransactions}
+	# return jsonify(response), 200
 
 @app.route('/node/receivegenesistransactions', methods=['POST'])
 def receivegenesistransactions():
@@ -168,10 +169,10 @@ def validate_received_transaction():
 	recipient_address = transaction['recipient_address']
 	transaction_outputs_recipient_second = transaction['transaction_outputs_recipient_second']
 	
-	sender_address = RSA.importKey(base64.b64decode(sender_address))
-	recipient_address = RSA.importKey(base64.b64decode(recipient_address))
-	transaction_outputs_recipient_first = RSA.importKey(base64.b64decode(transaction_outputs_recipient_first))
-	transaction_outputs_recipient_second = RSA.importKey(base64.b64decode(transaction_outputs_recipient_second))
+	# sender_address = RSA.importKey(base64.b64decode(sender_address))
+	# recipient_address = RSA.importKey(base64.b64decode(recipient_address))
+	# transaction_outputs_recipient_first = RSA.importKey(base64.b64decode(transaction_outputs_recipient_first))
+	# transaction_outputs_recipient_second = RSA.importKey(base64.b64decode(transaction_outputs_recipient_second))
 
 	transaction_outputs = [{'unique_UTXO_id':transaction_outputs_id_first,'amount':transaction_outputs_amount_first, 'transaction_id':transaction_outputs_transid_first ,'recipient':transaction_outputs_recipient_first}, 
 							{'unique_UTXO_id':transaction_outputs_id_second,'amount':transaction_outputs_amount_second, 'transaction_id':transaction_outputs_transid_second ,'recipient':transaction_outputs_recipient_second}]
@@ -186,10 +187,13 @@ def validate_received_transaction():
 	#return jsonify(response), 200
 	self_node.validate_transaction(t)
 
-@app.route('/block/receiveblock?block',methods=['POST'])
+	#return jsonify(t.to_dict()), 200
+
+@app.route('/block/receiveblock',methods=['POST'])
 def validate_received_block():
-	block = request.args.get('block')
-	self_node.validate_block(block)
+	received_block = request.get_json()
+	self_node.validate_block(received_block)
+	#self_node.chain.append(received_block)
 
 #dikia mas
 @app.route('/blockchain/getLength', methods=['GET'])

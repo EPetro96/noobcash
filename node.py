@@ -75,10 +75,11 @@ class node:
 				for node in range(1,5):
 					uri = self.ring[node]['ip_port']
 					dict_ring = {item['id']:item for item in self.ring}
-					r = requests.post('http://' + uri + '/node/ring', json = dict_ring)
-					print(r.content)
-					# genesis_block = self.chain[0]
-					# g_block = genesis_block.to_dict()
+					requests.post('http://' + uri + '/node/ring', json = dict_ring)
+					#print(r.content)
+
+					genesis_block = self.chain[0]
+					g_block = genesis_block.to_dict()
 					# # done_with_trans = {'done': 0}
 					# # for transdict in g_block['listOfTransactions']:
 					# # 	transdict.update(done_with_trans)
@@ -86,8 +87,8 @@ class node:
 					# # g_block.pop('listOfTransactions', None)
 					# # done_with_trans['done'] = 1
 					# # g_block.update(done_with_trans)
-					# r = requests.get('http://' + uri + '/node/receivegenesis', json = g_block)
-					# print(r.content)
+					r = requests.get('http://' + uri + '/node/receivegenesis', json = g_block)
+					print(r.content)
 
 					#lock ??
 
@@ -116,7 +117,7 @@ class node:
 				if (acc >= amount):
 					break
 		if (acc < amount):
-			print(acc)
+			print("DEN MOU FTANOUN TA GKAFRA :( \n")
 			return None	#null?
 
 		identity = len(self.transaction_pool) + 1	#check again
@@ -154,8 +155,8 @@ class node:
 		recv_public_key = transaction.receiver_address
 		if (transaction.verify_signature(sender_public_key)):
 			print("IN FIRST IF OF VALIDATE\n")
-			print(self.UTXOs)
-			print(transaction.transaction_inputs)
+			#print(self.UTXOs)
+			#print(transaction.transaction_inputs)
 			found = 0
 			for utxo in self.UTXOs:
 				#if (all(elem in self.UTXOs for elem in transaction.transaction_inputs)):	#check MY utxos for transaction.inputs. 
@@ -184,7 +185,7 @@ class node:
 				self.next_utxo_unique_id += 1
 				transaction_out = [utxo_for_sender, utxo_for_receiver]
 				transaction.transaction_outputs = transaction_out
-				#self.add_transaction_to_block(transaction)
+				self.add_transaction_to_block(transaction)
 		
 
 	def add_transaction_to_block(self, transaction):		
@@ -193,13 +194,15 @@ class node:
 		#utxo_for_receiver = transaction.transaction_outputs[1]
 		# if (utxo_for_receiver['recipient'] == self.wallet.public_key):	#if trans_out is about me, append it to my utxos
 		#self.UTXOs.append(utxo_for_receiver) #<-- is this necessary ?
-		if (len(self.transaction_pool) == TRANS_CAPACITY):
-			block = create_new_block(self.transaction_pool)
-			self.transaction_pool = []		#may not be right ?
-			mined_block = mine_block(block)
-			#return mined_block		
-			#then broadcast_block from rest_api
-			broadcast_block(mined_block)
+		for trans in self.transaction_pool:
+			print(trans.to_dict())
+		# if (len(self.transaction_pool) == TRANS_CAPACITY):
+		# 	block = create_new_block(self.transaction_pool)
+		# 	self.transaction_pool = []		#may not be right ?
+		# 	mined_block = mine_block(block)
+		# 	#return mined_block		
+		# 	#then broadcast_block from rest_api
+		# 	broadcast_block(mined_block)
 
 
 
@@ -216,8 +219,9 @@ class node:
 		for node in self.ring:
 			if (node['id'] != self.id):		#do not broadcast to myself
 				uri = node['ip_port']
-				block = jsonify(mined_block) 			#??
-				requests.post('http://' + uri + '/block/receiveblock?' + block)
+				dict_block = mined_block.to_dict()
+				requests.post('http://' + uri + '/node/receiveblock', json = dict_block)
+				
 		#return list_of_ips
 
 		
