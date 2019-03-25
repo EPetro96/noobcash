@@ -24,9 +24,9 @@ class wallet:
 		self.address = public_key 		#string
 		self.transactions = transactions
 
-	def balance(self, node):	#add all UTXOs concerning me
+	def balance(self, UTXOs, public_key):	#add all UTXOs concerning occupant of public_key
 		acc = 0
-		for utxo in node.UTXOs:
-			if (utxo['recipient'] is self.public_key):
-				acc += utxo['amount']
+		for utxo in UTXOs:
+			if (utxo['recipient'] == public_key):
+				acc += int(utxo['amount'])
 		return acc

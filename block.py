@@ -2,6 +2,14 @@
 from transaction import *
 import json
 
+import hashlib
+
+import Crypto
+import Crypto.Random
+from Crypto.Hash import SHA
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+
 
 class Block:
 	def __init__(self, index, previousHash, timestamp, nonce, listOfTransactions):
@@ -12,6 +20,9 @@ class Block:
 		self.hash = 42 					#dummy initializer
 		self.nonce = nonce
 		self.listOfTransactions = listOfTransactions
+
+	def __eq__(self,other):
+		return sorted(self.listOfTransactions) == sorted(other.listOfTransactions)
 
 
 	def to_dict(self):
@@ -28,10 +39,10 @@ class Block:
 							})
 		
 	
-	def myHash():
+	def myHash(self):
 		#CHECK AGAIN IF THAT"S WHAT WE WANT
 		#calculate self.hash
-		guess = (str(self.listOfTransactions)+str(self.previousHash)+str(self.nonce)+str(self.timestamp)).encode()
+		guess = (str(self.previousHash)+str(self.nonce)+str(self.timestamp)).encode()
 		return hashlib.sha256(guess).hexdigest()
         
 

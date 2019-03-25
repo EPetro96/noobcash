@@ -32,6 +32,11 @@ class Transaction:
 		if (not(sender_private_key is None)):
 			self.Signature = self.sign_transaction(sender_private_key)
 
+	def __eq__(self,other):
+		return self.transaction_id == other.transaction_id
+
+	def __lt__(self, other):
+		return self.transaction_id < other.transaction_id
 
 	def to_dict(self):
 		return OrderedDict({'transaction_id': self.transaction_id,
@@ -60,7 +65,8 @@ class Transaction:
 
 		signer = PKCS1_v1_5.new(actual_private_key)
 		#h = SHA.new(str(self.to_dict()).encode('utf8'))
-		message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': self.receiver_address, 'amount':self.amount}
+		#message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': self.receiver_address, 'amount':self.amount}
+		message = {'elare':'reee'}
 		h = SHA.new(str(message).encode('utf8'))
 		return binascii.hexlify(signer.sign(h)).decode('ascii')
 		# message = (str(self.sender_address) + str(self.receiver_address) + str(self.amount)).encode()
@@ -69,12 +75,13 @@ class Transaction:
 		# signature = PKCS1_v1_5.new(key).sign(h)
 		# return signature       
 
-	def verify_signature(self, sender_public_key):
+	def verify_signature(self, sender_public_key, signature):
 		#verify that the signature corresponds to sender's public key
 		#public_key = RSA.importKey(binascii.unhexlify(sender_public_key))
 		actual_sender_public_key = RSA.importKey(base64.b64decode(sender_public_key))
 		verifier = PKCS1_v1_5.new(actual_sender_public_key)
 		#h = SHA.new(str(self.to_dict()).encode('utf8'))
-		message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': self.receiver_address, 'amount':self.amount}
+		#message = {'transaction_id':self.transaction_id, 'sender_address': self.sender_address, 'recipient_address': self.receiver_address, 'amount':self.amount}
+		message = {'elare':'reee'}
 		h = SHA.new(str(message).encode('utf8'))
-		return verifier.verify(h, binascii.unhexlify(self.Signature))
+		return verifier.verify(h, binascii.unhexlify(signature))
