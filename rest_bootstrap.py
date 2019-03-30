@@ -11,7 +11,6 @@ from Crypto.Signature import PKCS1_v1_5
 
 from block import *
 from node import *
-#import blockchain
 from wallet import *
 from transaction import *
 from time import time
@@ -20,24 +19,20 @@ from time import time
 ### JUST A BASIC EXAMPLE OF A REST API WITH FLASK
 
 
-
-
 app = Flask(__name__)
 CORS(app)
-#blockchain = Blockchain()		#??? etsi ???
-#blockchain = []	
 self_node = node(0,[],0) #,500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
-									#xtypane sthn create
-#list_of_current_block_transactions = []
-
 
 
 #.......................................................................................
 
-# @app.route('/node', methods=['POST'])
-# def init():			#params that we need: id,
-# 	identifier = request.args.get('id') 
-# 		#id, chain, current_id_count, NBCs
+
+@app.route('/myring',methods=['GET'])
+def myring():
+	i = 1
+	response = {}
+	response.update({'myid':self_node.id})
+	return jsonify(response), 200
 
 
 @app.route('/thesemyutxos', methods=['GET'])
@@ -67,14 +62,13 @@ def create_genesis():
 	random_gen = Crypto.Random.new().read
 	private_key = RSA.generate(1024, random_gen)
 	private_key_string = str(base64.b64encode(private_key.exportKey(format='DER')),'utf-8')
-	#p_string = str(private_key)
 	t = Transaction(0, private_key_string, self_node.wallet.public_key, 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
 	listOfTransactions.append(t)
 	timestamp = time()
 	block = Block(0, 1, timestamp, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
 	(self_node.chain).append(block)
 
-	uri = '192.168.1.3:5000'		#GIA VMS THELEI ALLAGI
+	uri = '192.168.0.2:5000'		#GIA VMS THELEI ALLAGI
 	my_public_key = self_node.wallet.public_key
 	self_node.put_me_in(uri,my_public_key, '5000')
 	
@@ -117,14 +111,6 @@ def register_node():
 	
 	return 'ok', 200
 
-# get all transactions in the blockchain
-
-# @app.route('/transactions/get', methods=['GET'])
-# def get_transactions():
-#     transactions = blockchain.transactions
-
-#     response = {'transactions': transactions}
-#     return jsonify(response), 200
 
 @app.route('/transaction/receivetransaction', methods=['POST'])
 def validate_received_transaction():
@@ -169,8 +155,6 @@ def validate_received_block():
 	nonce = received_block['nonce']
 
 	newlist = []
-	# index = received_block['block_index']
-	# previousHash = received_block['previousHash']
 	listOfTransactions = received_block['listOfTransactions']
 
 	for trans in listOfTransactions:
@@ -198,44 +182,42 @@ def validate_received_block():
 		t = Transaction(sender_address, None, recipient_address, amount, transaction_id, transaction_inputs, transaction_outputs)
 
 		self_node.next_trans_id = transaction_id + 1
+
+		t.Signature = transaction_signature
 		
 		newlist.append(t)
 
 	newlist_sorted = sorted(newlist)
 
-	for trans in newlist_sorted:
-		if not(trans in self_node.transaction_pool):
-			for utxo_id in transaction_inputs:
-				self_node.UTXOs = [utxo for utxo in self_node.UTXOs if utxo['unique_UTXO_id'] != utxo_id]
-
-			for utxo in transaction_outputs :
-				if not(utxo in self_node.UTXOs):
-					self_node.UTXOs = self_node.UTXOs + transaction_outputs
-
 	new_block = Block(block_index, previousHash, timestamp, nonce, newlist_sorted)
 	new_block.hash = hash_
-	self_node.validate_block(new_block)	
+	if(self_node.validate_block(new_block)):
+
+		self_node.chainLock.acquire()
+		self_node.utxoLock.acquire()
+		self_node.poolLock.acquire()
+
+		self_node.chain.append(new_block)
+
+		for trans in newlist_sorted:
+			if trans in self_node.transaction_pool:	#if transaction in our pool
+				self_node.transaction_pool.remove(trans)
+
+		#for trans in newlist_sorted:
+			if not(trans in self_node.transaction_pool):
+				for utxo_id in transaction_inputs:
+					self_node.UTXOs = [utxo for utxo in self_node.UTXOs if utxo['unique_UTXO_id'] != utxo_id]
+
+				for utxo in transaction_outputs :
+					if not(utxo in self_node.UTXOs):
+						self_node.UTXOs = self_node.UTXOs + transaction_outputs	
+
+		self_node.poolLock.release()
+		self_node.utxoLock.release()
+		self_node.chainLock.release()
 
 	return "OK", 200
 
-# @app.route('/block/manytimes', methods=['GET'])
-# def many_times():
-# 	acc = 0
-# 	for b in range(2, len(self_node.chain)-1):
-# 		if (self_node.chain[b] == self_node.chain[b+1]):
-# 			acc += 1
-# 	response = {'acc': acc}
-# 	return jsonify(response), 200
-
-# @app.route('/block/blockchain_contents', methods = ['GET'])
-# def return_blocks():
-# 	response = {}
-# 	i = 1
-# 	for block in self_node.chain:
-# 		d = {i: block.to_dict()}
-# 		i += 1
-# 		response.update(d)
-# 	return jsonify(response), 200
 
 @app.route('/transaction/transpoollength', methods = ['GET'])
 def get_pool_length():
@@ -248,11 +230,13 @@ def get_chain_length():
 	response = {'length': len(self_node.chain)}
 	return jsonify(response), 200
 
-@app.route('/blockchain/getCertainBlock?blocknumber', methods=['GET'])
+@app.route('/blockchain/getCertainBlock', methods=['GET'])
 def getcertainblock():
 	blocknumber = request.args.get('blocknumber')
+	number = int(blocknumber)
 	chain = self_node.chain 	#self = node
-	response = {'block': chain[blocknumber].to_dict()}	#check
+	#response = {'block': chain[blocknumber].to_dict()}	#check
+	response = (chain[number].to_dict())
 	return jsonify(response), 200
 
 
@@ -275,6 +259,17 @@ def return_balance():
 	return jsonify(response), 200
 
 
+@app.route('/view', methods=['GET'])
+def view_trans():
+	last_block = self_node.chain[-1]
+	newlist = {}
+	i = 1
+	for trans in last_block.listOfTransactions:
+		newlist.update({i:trans.for_view()})
+		i += 1
+	response = newlist
+	return jsonify(response), 200
+
 # run it once for every node
 
 if __name__ == '__main__':
@@ -286,4 +281,4 @@ if __name__ == '__main__':
     port = args.port
 
 
-    app.run(host='192.168.1.3', port=port)
+    app.run(host='192.168.0.2', port=port)

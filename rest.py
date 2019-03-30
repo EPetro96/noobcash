@@ -24,20 +24,21 @@ from time import time
 
 app = Flask(__name__)
 CORS(app)
-#blockchain = Blockchain()		#??? etsi ???
-#blockchain = []	
+
 self_node = node(1,[],0) #,500 nbcs)	#identifier symfwna me to poio node eimaste. arxikopoihmeno pantou ston bootstrap. oi ypoloipoi kanoun set ta pedia otan
 									#xtypane sthn create
-#list_of_current_block_transactions = []
 
 
 
 #.......................................................................................
 
-# @app.route('/node', methods=['POST'])
-# def init():			#params that we need: id,
-# 	identifier = request.args.get('id') 
-# 		#id, chain, current_id_count, NBCs
+@app.route('/myring',methods=['GET'])
+def myring():
+	i = 1
+	response = {}
+	response.update({'myid':self_node.id})
+	return jsonify(response), 200
+
 
 @app.route('/thesemyutxos', methods=['GET'])
 def return_utxos():
@@ -56,8 +57,8 @@ def return_utxos():
 
 @app.route('/node/vale_me_sto_diktyo', methods=['POST'])
 def vale_me():
-	uri = '192.168.1.3:5000'
-	myport = '4999'
+	uri = '192.168.0.2:5000'
+	myport = '5000'
 	my_public_key = self_node.wallet.public_key
 	self_node.put_me_in(uri,my_public_key,myport)
 
@@ -76,19 +77,12 @@ def create_genesis():
 	random_gen = Crypto.Random.new().read
 	private_key = RSA.generate(1024, random_gen)
 	private_key_string = str(base64.b64encode(private_key.exportKey(format='DER')),'utf-8')
-	#p_string = str(private_key)
 	t = Transaction(0, private_key_string, self_node.wallet.public_key, 5*100, 0, [], genesis_outs)		#sender_address = 0, sender_private_key = 0 (emeis authaireta), amount n*100 (edw n = 5)
 	listOfTransactions.append(t)
 	timestamp = time()
 	block = Block(0, 1, timestamp, 0, listOfTransactions)			#create_new_block(previousHash, timestamp, nonce, listOfTransactions)
 	(self_node.chain).append(block)
 	
-	#response = {'genesis': block.listOfTransactions[0].to_dict()}
-
-	#return jsonify(response), 200
-
-	# response = {'genesis_block': block.listOfTransactions}
-    # return jsonify(response), 200
 	return 'ok', 200
 
 @app.route('/node/receivegenesis', methods=['POST'])
@@ -102,8 +96,6 @@ def receive_init_chain():
 	nonce = received_block['nonce']
 
 
-	# index = received_block['block_index']
-	# previousHash = received_block['previousHash']
 	listOfTransactions = received_block['listOfTransactions']
 	genesis_trans = listOfTransactions[0]
 
@@ -138,8 +130,6 @@ def receive_init_chain():
 	genesis_block = Block(block_index, previousHash, timestamp, nonce, newlist)
 	genesis_block.hash = hash_
 	self_node.chain.append(genesis_block)
-	#response = {'index':index, 'previousHash': previousHash, 'listOfTransactions': listOfTransactions}
-	#return jsonify(response), 200
 
 	return "OK", 200
 
@@ -147,8 +137,7 @@ def receive_init_chain():
 @app.route('/node/create', methods=['POST'])
 def create_node():
 	identifier = request.args.get('id')
-	#self_node = node(identifier,[],0),#nbcs)	#theloume kapws self_node prospelasimo apo olo to rest?
-	self_node.identifier = identifier			#change my id. everything else is fine. now self_node is reachable everywhere in the rest
+	self_node.id = identifier			#change my id. everything else is fine. now self_node is reachable everywhere in the rest
 	example = {'ayto einai to id mou mwrh linatsa': identifier}
 	return jsonify(example), 200
 
@@ -168,13 +157,10 @@ def register_node():
 	port = '5000' 	#deite to kai meta
 	ip = request.remote_addr
 	iterator = int(iterator)
-	#public_key = request.args.get('public_key')
 
-	public_key = self_node.wallet.public_key 	#this is strign
+	public_key = self_node.wallet.public_key 	#this is strigng
 	self_node.register_node_to_ring(public_key, ip, port)	#node that runs the rest (bootstrap node here)
-	#t = transaction(n.wallet.public_key(),n.wallet.private_key() ,public_key, 100)
-	#signature = t.sign_transaction(n.wallet.private_key())
-	#node.create_transaction(n.wallet.public_key(), public_key, signature, t)
+	
 	ring = self_node.ring[iterator]
 	response = {'id':ring['id'],'ip_port':ring['ip_port'],'public_key':ring['public_key'],'amount':ring['amount']} 	
 	return jsonify(response), 200
@@ -232,8 +218,7 @@ def validate_received_block():
 	nonce = received_block['nonce']
 
 	newlist = []
-	# index = received_block['block_index']
-	# previousHash = received_block['previousHash']
+
 	listOfTransactions = received_block['listOfTransactions']
 
 	for trans in listOfTransactions:
@@ -257,17 +242,10 @@ def validate_received_block():
 
 		self_node.next_utxo_unique_id += 2
 
-		# if not(trans in self_node.transaction_pool):
-		# 	for utxo_id in transaction_inputs:
-		# 		self_node.UTXOs = [utxo for utxo in self_node.UTXOs if utxo['unique_UTXO_id'] != utxo_id]
-
-		# 	for utxo in transaction_outputs :
-		# 		if not(utxo in self_node.UTXOs):
-		# 			self_node.UTXOs = self_node.UTXOs + transaction_outputs
-
-		#self_node.UTXOs = list(set(self_node.UTXOs))
 
 		t = Transaction(sender_address, None, recipient_address, amount, transaction_id, transaction_inputs, transaction_outputs)
+
+		t.Signature = transaction_signature
 
 		self_node.next_trans_id = transaction_id + 1
 		
@@ -275,39 +253,35 @@ def validate_received_block():
 
 	newlist_sorted = sorted(newlist)
 
-	for trans in newlist_sorted:
-		if not(trans in self_node.transaction_pool):
-			for utxo_id in transaction_inputs:
-				self_node.UTXOs = [utxo for utxo in self_node.UTXOs if utxo['unique_UTXO_id'] != utxo_id]
-
-			for utxo in transaction_outputs :
-				if not(utxo in self_node.UTXOs):
-					self_node.UTXOs = self_node.UTXOs + transaction_outputs
-
 	new_block = Block(block_index, previousHash, timestamp, nonce, newlist)
 	new_block.hash = hash_
-	self_node.validate_block(new_block)	
+	if(self_node.validate_block(new_block)):
+
+		self_node.chainLock.acquire()
+		self_node.utxoLock.acquire()
+		self_node.poolLock.acquire()
+
+		self_node.chain.append(new_block)
+
+		for trans in newlist_sorted:
+			if trans in self_node.transaction_pool:	#if transaction in our pool
+				self_node.transaction_pool.remove(trans)
+
+		#for trans in newlist_sorted:
+			if not(trans in self_node.transaction_pool):
+				for utxo_id in transaction_inputs:
+					self_node.UTXOs = [utxo for utxo in self_node.UTXOs if utxo['unique_UTXO_id'] != utxo_id]
+
+				for utxo in transaction_outputs :
+					if not(utxo in self_node.UTXOs):
+						self_node.UTXOs = self_node.UTXOs + transaction_outputs	
+
+		self_node.poolLock.release()
+		self_node.utxoLock.release()
+		self_node.chainLock.release()
 
 	return "OK", 200
 
-# @app.route('/block/manytimes', methods=['GET'])
-# def many_times():
-# 	acc = 0
-# 	for b in range(2, len(self_node.chain)-1):
-# 		if (self_node.chain[b] == self_node.chain[b+1]):
-# 			acc += 1
-# 	response = {'acc': acc}
-# 	return jsonify(response), 200
-
-# @app.route('/block/blockchain_contents', methods = ['GET'])
-# def return_blocks():
-# 	response = {}
-# 	i = 1
-# 	for block in self_node.chain:
-# 		d = {i: block.to_dict()}
-# 		i += 1
-# 		response.update(d)
-# 	return jsonify(response), 200
 
 @app.route('/transaction/transpoollength', methods = ['GET'])
 def get_pool_length():
@@ -320,11 +294,13 @@ def get_chain_length():
 	response = {'length': len(self_node.chain)}
 	return jsonify(response), 200
 
-@app.route('/blockchain/getCertainBlock?blocknumber', methods=['GET'])
+@app.route('/blockchain/getCertainBlock', methods=['GET'])
 def getcertainblock():
 	blocknumber = request.args.get('blocknumber')
-	chain = self_node.chain 	#self = node
-	response = {'block': chain[blocknumber].to_dict()}	#check
+	number = int(blocknumber)
+	chain = self_node.chain
+	response = (chain[number]).to_dict()
+	#response = {'block': chain[blocknumber].to_dict()}
 	return jsonify(response), 200
 
 
@@ -348,6 +324,17 @@ def return_balance():
 	response = {'balance': balance}
 	return jsonify(response), 200
 
+@app.route('/view', methods=['GET'])
+def view_trans():
+	last_block = self_node.chain[-1]
+	newlist = {}
+	i = 1
+	for trans in last_block.listOfTransactions:
+		newlist.update({i:trans.for_view()})
+		i += 1
+	response = newlist
+	return jsonify(response), 200
+
 
 # run it once for every node
 
@@ -355,8 +342,8 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('-p', '--port', default=4999, type=int, help='port to listen on')
+    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
     args = parser.parse_args()
     port = args.port
 
-    app.run(host='192.168.1.3', port=port)
+    app.run(host='192.168.0.4', port=port)

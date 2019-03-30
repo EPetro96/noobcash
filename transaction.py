@@ -29,8 +29,11 @@ class Transaction:
 			self.transaction_inputs = transaction_in
 		if (not( transaction_out is None)):
 			self.transaction_outputs = transaction_out
+		#self.Signature = self.sign_transaction(sender_private_key)
 		if (not(sender_private_key is None)):
-			self.Signature = self.sign_transaction(sender_private_key)
+		 	self.Signature = self.sign_transaction(sender_private_key)
+		else:
+		 	self.Signature = 'wallet_0'
 
 	def __eq__(self,other):
 		return self.transaction_id == other.transaction_id
@@ -53,15 +56,16 @@ class Transaction:
 							'transaction_outputs_recipient_second': self.transaction_outputs[1]['recipient'],
 							'transaction_signature':self.Signature,
 							'amount': self.amount})
+
+	def for_view(self):
+		return OrderedDict({'transaction_id': self.transaction_id,
+							'amount': self.amount})
 		
 
 	def sign_transaction(self, sender_private_key):
 		#Sign transaction with private key
-		#private_key = RSA.importKey(binascii.unhexlify(sender_private_key)) PREPEI NA BEI!!1!!1!!!11!FILIA STIN OIKOGENEIA
 		actual_private_key = RSA.importKey(base64.b64decode(sender_private_key))
 		
-		#actual_sender_address = RSA.importKey(base64.b64decode(self.sender_address))
-		#actual_receiver_address = RSA.importKey(base64.b64decode(self.receiver_address))
 
 		signer = PKCS1_v1_5.new(actual_private_key)
 		#h = SHA.new(str(self.to_dict()).encode('utf8'))

@@ -1,6 +1,4 @@
 from block import *
-#from node import *
-#import blockchain
 from wallet import *
 from transaction import *
 
@@ -23,31 +21,31 @@ from Crypto.Signature import PKCS1_v1_5
 MINING_DIFFICULTY = 5
 TRANS_CAPACITY = 5
 
-threadLock = threading.Lock()
-#threadLock.acquire()
-#threadLock.release()
+#chainLock = threading.Lock()
+#chainLock.acquire()
+#chainLock.release()
 
 class node:
-	def __init__(self, identifier, chain, current_id_count):	#chain = []
+	def __init__(self, identifier, chain, current_id_count):
 		self.id = identifier
-		# self.NBC=100;
 		##set
+
+		self.chainLock = threading.Lock()
+		#self.transLock = threading.Lock()
+		self.poolLock = threading.Lock()
+		self.utxoLock = threading.Lock()
 
 		self.transaction_pool = []  #list of transactions
 		self.chain = chain			#blockchain
 		self.current_id_count = current_id_count
-		#self.NBCs = NBCs
+
 		self.wallet = self.create_wallet()
 		
 		self.UTXOs = []	#list of dictionairies
 		self.next_utxo_unique_id = 0
 		self.next_trans_id = 0
-		
-		#create a block???
-		#self.block = create_new_block
 
 		self.ring = [] #{'id':0,'ip_port':bootstrap_ip,'public_key':bootstrap_public_key}] #???  #here we store information for every node, as its id, its address (ip:port) its public key and its balance 
-		#list of dictionaries {'id', 'ip_port', 'public_key', 'balance'}
 
 
 	def put_me_in(self, uri, pkey, port):
@@ -56,12 +54,18 @@ class node:
 
 
 	def create_new_block(self, listOfTransactions):
+
+		#self.chainLock.acquire()
+
 		lastblock = self.chain[-1]
 		previousHash = lastblock.hash 	
 		timestamp = time()
 		block_index = len(self.chain) + 1
 
 		b = Block(block_index, previousHash, timestamp, 0, listOfTransactions)
+
+		#self.chainLock.release()
+
 		return b
 
 	def create_wallet(self):
@@ -87,7 +91,6 @@ class node:
 					uri = self.ring[node]['ip_port']
 					dict_ring = {item['id']:item for item in self.ring}
 					requests.post('http://' + uri + '/node/ring', json = dict_ring)
-					#print(r.content)
 				for node in range(1,5):
 					uri = self.ring[node]['ip_port']
 					genesis_block = self.chain[0]
@@ -99,10 +102,8 @@ class node:
 					t = self.create_transaction(self.wallet.public_key, self.ring[node]['public_key'], 100)
 					
 					#unlock ??
-			if (not(identifier == 0) and self.current_id_count < 5):
+			if (not(identifier == 0) and self.current_id_count <= 5):
 				requests.post('http://' + ip_port + '/node/create?id=' + str(identifier))
-				#maybe requests for first (100 NBCs) transactions ?
-
 
 		#add this node to the ring, only the bootstrap node can add a node to the ring after checking his wallet and ip:port address
 		#bottstrap node informs all other nodes and gives the request node an id and 100 NBCs
@@ -110,108 +111,148 @@ class node:
 
 	def create_transaction(self, sender_public_key, recv_public_key, amount):
 
-		#threadLock.acquire()
+		#self.transLock.acquire()
 
-		print("MOLIS MPHKA CREATE_TRANSACTION GAMW THN PANAGIA \n")
 		sender_private_key = self.wallet.private_key
 		acc = 0
 		transaction_in = []
+
+		self.utxoLock.acquire()
+
 		for utxo in self.UTXOs:
-			print("MPHKA FOR \n")
 			if (utxo['recipient'] == self.wallet.public_key):
 				acc += utxo['amount']
 				transaction_in.append(utxo['unique_UTXO_id'])
 				if (acc >= amount):
 					break
+
+		self.utxoLock.release()
+
 		if (acc < amount):
 			print("DEN MOU FTANOUN TA GKAFRA :( \n")
 			transaction_in = []
+			#self.transLock.release()
 			return None	#null?
 
-		#identity = len(self.transaction_pool) + 1	#check again
 		identity = self.next_trans_id
 		self.next_trans_id += 1
 
 		transaction_out = []
-		print("IN CREATE_TRANSACTION. BEFORE TRANSACTION CONSTRUCTOR \n")
 		t = Transaction(sender_public_key, sender_private_key, recv_public_key, amount, identity, transaction_in, transaction_out)
-		print("IN CREATE_TRANSACTION. BEFORE VALIDATE TRANSACTION \n")
-		self.validate_transaction(t, t.Signature)	#if we don't receive our own transaction from broadcast 
-		print("IN CREATE_TRANSACTION. RETURNED FROM VALIDATE TRANSACTION\n")
-		self.broadcast_transaction(t)
 
-		#threadLock.release()
+		#self.chainLock.release()
+
+		if(self.validate_transaction(t, t.Signature)):	#if we don't receive our own transaction from broadcast 
+			self.broadcast_transaction(t)
+
+		#self.transLock.release()
+		
 
 	def broadcast_transaction(self, transaction):
+
+		#self.chainLock.acquire()
+
 		for node in self.ring:
 			if (node['id'] != self.id):		#do not broadcast to myself
 				uri = node['ip_port']
-				# print("GETTING THERE!!!\n")
-				# print(uri)
 				dict_trans = transaction.to_dict() 			
 				requests.post('http://' + uri + '/transaction/receivetransaction', json = dict_trans)
-				#print(r.content)
+
+		#self.chainLock.release()
 		
 
 
 
 	def validate_transaction(self, transaction, signature):		#it's called from rest when receiving a transaction
+
+		#self.chainLock.acquire()
+
 		#use of signature and NBCs balance
 		#a)verify signature
-		print("IN VALIDATE TRANSACTION \n")
 		sender_public_key = transaction.sender_address
 		recv_public_key = transaction.receiver_address
 		if (transaction.verify_signature(sender_public_key, signature)):
-			print("IN FIRST IF OF VALIDATE\n")
+
+			print("EKANA VERIFY TO SIGNATURE\n")
+
 			found = 0
+
+			self.utxoLock.acquire()
 
 			for utxo in self.UTXOs: 	#check MY utxos for transaction.inputs. 
 				if (utxo['unique_UTXO_id'] in transaction.transaction_inputs):
 					found += 1
 
-			if (found == len(transaction.transaction_inputs)):
-				print("IN SECOND IF OF VALIDATE\n")
-				balance = self.wallet.balance(self.UTXOs, sender_public_key)
+			self.utxoLock.release()
 
-				print("I'm # 0 with balance:" + str(self.wallet.balance(self.UTXOs, self.wallet.public_key)))
+			if (found == len(transaction.transaction_inputs)):
+				#balance = self.wallet.balance(self.UTXOs, sender_public_key)
+
+				print("KOMPLE TA INPUTS\n")
+
+				balance = 0
+
+				self.utxoLock.acquire()
+
+				for utxo_id in transaction.transaction_inputs:
+					for utxo in self.UTXOs:
+						if (utxo['unique_UTXO_id'] == utxo_id):
+							balance += utxo['amount']
 
 
 				for utxo_id in transaction.transaction_inputs:
 					self.UTXOs = [utxo for utxo in self.UTXOs if utxo['unique_UTXO_id'] != utxo_id]		#If valid, take trans_inputs out of my UTXOS.
-					print("took inputs out of my utxos\n")
 
-
-
-				utxo_for_sender = {'unique_UTXO_id':str(transaction.transaction_id) + str(balance - transaction.amount) + str(sender_public_key), 'transaction_id': transaction.transaction_id, 'recipient': sender_public_key, 'amount': (balance - transaction.amount)}
+				#str(transaction.transaction_id) + 
+				utxo_for_sender = {'unique_UTXO_id':str(transaction.transaction_id) +str(balance - transaction.amount) + str(sender_public_key), 'transaction_id': transaction.transaction_id, 'recipient': sender_public_key, 'amount': (balance - transaction.amount)}
 				if (not(utxo_for_sender in self.UTXOs)):
 					self.UTXOs.append(utxo_for_sender)
-
-				print("appended first output to my utxos\n")
 				
-
-				utxo_for_receiver = {'unique_UTXO_id':str(transaction.transaction_id) + str(transaction.amount) + str(recv_public_key), 'transaction_id': transaction.transaction_id, 'recipient': recv_public_key, 'amount':transaction.amount}
+				#str(transaction.transaction_id) + 
+				utxo_for_receiver = {'unique_UTXO_id':str(transaction.transaction_id) +str(transaction.amount) + str(recv_public_key), 'transaction_id': transaction.transaction_id, 'recipient': recv_public_key, 'amount':transaction.amount}
 				if (not(utxo_for_receiver in self.UTXOs)):
 					self.UTXOs.append(utxo_for_receiver)
-				
-				print("appended second output to my utxos\n")
-				
+								
+				self.utxoLock.release()
 
 				transaction_out = [utxo_for_sender, utxo_for_receiver]
 				transaction.transaction_outputs = transaction_out
+
+				#self.chainLock.release()
+
+				#self.next_trans_id = transaction.transaction_id + 1
 				self.add_transaction_to_block(transaction)
+				return True
+
+			return False
 		
 
-	def add_transaction_to_block(self, transaction):		
+	def add_transaction_to_block(self, transaction):
+
+		self.poolLock.acquire()
+
 		#if enough transactions  mine
 		self.transaction_pool.append(transaction)
 
-		if (len(self.transaction_pool) == TRANS_CAPACITY):
-			block = self.create_new_block(self.transaction_pool)
-			#self.transaction_pool = []		#may not be right ?
+		self.poolLock.release()
+
+		if (len(self.transaction_pool) >= TRANS_CAPACITY):
+
+			#self.chainLock.acquire()
+			self.poolLock.acquire()
+
+			block = self.create_new_block(self.transaction_pool[0:TRANS_CAPACITY])
+
+			self.poolLock.release()
+
 			mined_block = self.mine_block(block)
+
+			#self.chainLock.release()
+
 			#return mined_block		
 			#then broadcast_block from rest_api
-			self.broadcast_block(mined_block)
+			if(mined_block.nonce != 0):
+				self.broadcast_block(mined_block)
 
 
 
@@ -220,10 +261,28 @@ class node:
 		while (self.valid_proof(nonce, block) is False):
 			nonce += 1
 		block.nonce = nonce
+
+		self.chainLock.acquire()
+
+		last_block = self.chain[-1]
+		last_hash = last_block.hash
+		prev_hash = block.previousHash
+
+		if (prev_hash != last_hash):
+			block.nonce = 0
+			self.chainLock.release()
+			return block
+
 		self.chain.append(block)
-		for trans in block.listOfTransactions:
-			if trans in self.transaction_pool:	#if transaction in our pool
-				self.transaction_pool.remove(trans)
+
+		self.chainLock.release()
+
+		self.poolLock.acquire()
+
+		self.transaction_pool = self.transaction_pool[TRANS_CAPACITY:len(self.transaction_pool)]
+
+		self.poolLock.release()
+
 		return block
 
 
@@ -233,8 +292,7 @@ class node:
 				uri = node['ip_port']
 				dict_block = mined_block.to_dict()
 				requests.post('http://' + uri + '/block/receiveblock', json = dict_block)
-				
-		#return list_of_ips
+			
 
 
 	def valid_proof(self, nonce, block, difficulty=MINING_DIFFICULTY):
@@ -250,10 +308,9 @@ class node:
 
 
 
-
 	#concencus functions
 
-	def valid_chain(self, chain):	#checks for the longer chain accross all nodes. returns ip:port of the longest chain owner
+	def get_longest_chain(self, chain):	#checks for the longer chain accross all nodes. returns ip:port of the longest chain owner
 		max_length = len(chain)
 		my_dict = list(filter(lambda me: me['public_key'] == (self.wallet).public_key, self.ring))
 		node_with_max_chain = my_dict[0]['ip_port']
@@ -274,18 +331,48 @@ class node:
 		return [node_with_max_chain,max_length]
 
 
+	def valid_chain(self, chain):
+		prev_hash = 42
+		for block in chain:
+			if (block.previousHash != prev_hash):
+				return False
+			else:
+				prev_hash = block.previousHash
+				myHash = block.myHash()
+				if (myHash != block.hash): 	
+					return False 				#this should never happen (maybe?)
+				return True
+
+
 	def resolve_conflicts(self):
 		#resolve correct chain
 
 		print("EIMAI STH RESOLVE CONFILCTS")
 
-		node_with_max_chain = self.valid_chain(self.chain)
+		#self.chainLock.acquire()
+
+		node_with_max_chain = self.get_longest_chain(self.chain)
 		if (node_with_max_chain[0] != '0'):	#my chain is not the longest
-			number_of_needed_blocks = node_with_max_chain[1] - len(self.chain)
-			for i in range (number_of_needed_blocks+1, node_with_max_chain[1]): 	#maybe number_of_needed_blocks + 1
-				response = requests.get('http://' + node_with_max_chain[0] + '/blockchain/getCertainBlock?' + str(i))
+			
+			#new_blocks_transactions = {}
+			#newblock = 1
+
+			candidate_chain = self.chain
+			new_utxos = self.UTXOs
+			new_transactions_pool = self.transaction_pool
+			temp_next_trans_id = self.next_trans_id
+
+			# number_of_needed_blocks = node_with_max_chain[1] - len(self.chain)
+
+			self.chainLock.acquire()
+			for i in range (len(self.chain), node_with_max_chain[1]): 	#maybe number_of_needed_blocks + 1
+					
+				response = requests.get('http://' + node_with_max_chain[0] + '/blockchain/getCertainBlock?blocknumber=' + str(i))
 				if response.status_code == 200:
-					received_block = response.content
+
+					#self.chainLock.acquire()					
+
+					received_block = response.json()
 
 					block_index = received_block['block_index']
 					previousHash = received_block['previousHash']
@@ -294,8 +381,7 @@ class node:
 					nonce = received_block['nonce']
 
 					newlist = []
-					# index = received_block['block_index']
-					# previousHash = received_block['previousHash']
+					
 					listOfTransactions = received_block['listOfTransactions']
 
 					for trans in listOfTransactions:
@@ -317,43 +403,87 @@ class node:
 						transaction_outputs = [{'unique_UTXO_id':transaction_outputs_id_first,'amount':transaction_outputs_amount_first, 'transaction_id':transaction_outputs_transid_first ,'recipient':transaction_outputs_recipient_first}, 
 											   {'unique_UTXO_id':transaction_outputs_id_second,'amount':transaction_outputs_amount_second, 'transaction_id':transaction_outputs_transid_second ,'recipient':transaction_outputs_recipient_second}]
 
-						self_node.next_utxo_unique_id += 2
+						self.next_utxo_unique_id += 2
 
 
 						t = Transaction(sender_address, None, recipient_address, amount, transaction_id, transaction_inputs, transaction_outputs)
-						self.next_trans_id = transaction_id + 1
+						temp_next_trans_id = transaction_id + 1
 						
 						newlist.append(t)
 
 					newlist_sorted = sorted(newlist)
 
+					#new_blocks_transactions.update({newblock: newlist_sorted})
+
+					#newblock += 1
+
 					for trans in newlist_sorted:
-						if not(trans in self_node.transaction_pool):
+						if trans in new_transactions_pool:	#if transaction in our pool
+							new_transactions_pool.remove(trans)
+
+						self.poolLock.acquire()
+						if not(trans in self.transaction_pool):
 							for utxo_id in transaction_inputs:
-								self_node.UTXOs = [utxo for utxo in self_node.UTXOs if utxo['unique_UTXO_id'] != utxo_id]
+								new_utxos = [utxo for utxo in new_utxos if utxo['unique_UTXO_id'] != utxo_id]
 
 							for utxo in transaction_outputs :
-								if not(utxo in self_node.UTXOs):
-									self_node.UTXOs = self_node.UTXOs + transaction_outputs
+								if not(utxo in new_utxos):
+									new_utxos = new_utxos + transaction_outputs
+
+						self.poolLock.release()
 
 					new_block = Block(block_index, previousHash, timestamp, nonce, newlist_sorted)
 					new_block.hash = hash_
-					self_node.validate_block(new_block)
 
+					
+
+					candidate_chain.append(new_block)
+
+					#self.chainLock.release()
+
+					#self.validate_block(new_block)
+			
+
+			if (self.valid_chain(candidate_chain)):
+				self.chain = candidate_chain 		#candidate chain is correct. i must obtain it
+
+				self.utxoLock.acquire()
+
+				self.UTXOs = new_utxos  			#update my utxos accordingly
+
+				self.utxoLock.release()
+
+				self.poolLock.acquire()
+
+				self.transaction_pool = new_transactions_pool 	#update my transaction pool as well
+
+				self.poolLock.release()
+
+				self.next_trans_id = temp_next_trans_id
+
+
+
+			self.chainLock.release()
 
 
 
 
 	def validate_block(self, block):	#except for genesis block. Called when receiving a (mined) block
+		self.chainLock.acquire()
+		
 		lastblock = self.chain[-1]
 		last_hash = lastblock.hash
+		
+		self.chainLock.release()
+
 		prev_hash = block.previousHash
 		if (prev_hash != last_hash):
 			self.resolve_conflicts()
+			return False
 		else:
 			myHash = block.myHash()
 			if (myHash == block.hash):
-				self.chain.append(block)
-				for trans in block.listOfTransactions:
-					if trans in self.transaction_pool:	#if transaction in our pool
-						self.transaction_pool.remove(trans)
+
+				return True
+			else:
+				return False
